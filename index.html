@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Slime Jump Game</title>
     <style>
         * {
@@ -10,33 +10,37 @@
             padding: 0;
             box-sizing: border-box;
         }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
         body {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Arial', sans-serif;
-        }
-        #gameContainer {
-            position: relative;
             background-color: #87CEEB;
-            border: 4px solid #333;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
         canvas {
             display: block;
+            width: 100vw;
+            height: 100vh;
+            max-width: 400px;
+            max-height: 800px;
+            background-color: #87CEEB;
+            border: none;
         }
         #ui {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            font-size: 20px;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
             font-weight: bold;
             color: #333;
-            background: rgba(255,255,255,0.8);
-            padding: 10px 15px;
-            border-radius: 5px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px 20px;
+            border-radius: 8px;
+            z-index: 10;
         }
         #gameOverScreen {
             position: absolute;
@@ -44,52 +48,53 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             display: none;
             justify-content: center;
             align-items: center;
             flex-direction: column;
             color: white;
-            font-size: 40px;
-            z-index: 100;
+            z-index: 20;
         }
         #gameOverScreen h1 {
+            font-size: 50px;
             margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
         #gameOverScreen p {
-            font-size: 20px;
-            margin-bottom: 20px;
+            font-size: 30px;
+            margin-bottom: 30px;
         }
         #gameOverScreen button {
-            padding: 10px 30px;
-            font-size: 18px;
+            padding: 15px 40px;
+            font-size: 24px;
             background-color: #4CAF50;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
-            margin-top: 20px;
         }
-        #gameOverScreen button:hover {
+        #gameOverScreen button:active {
             background-color: #45a049;
         }
     </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas" width="600" height="400"></canvas>
-        <div id="ui">
-            <span id="timer">⏱️ Time: 30s</span> | <span id="score">⭐ Score: 0</span>
-        </div>
-        <div id="gameOverScreen">
-            <h1 id="result">Game Over!</h1>
-            <p id="finalScore">Score: 0</p>
-            <button onclick="location.reload()">Play Again</button>
-        </div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+        <span id="timer">⏱️ 30s</span> | <span id="score">⭐ 0</span>
+    </div>
+    <div id="gameOverScreen">
+        <h1 id="result">🎉 You Win!</h1>
+        <p id="finalScore">Score: 0</p>
+        <button onclick="location.reload()">Play Again</button>
     </div>
 
     <script>
+        // 縦向き固定
+        if (screen.orientation) {
+            screen.orientation.lock('portrait').catch(err => console.log(err));
+        }
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const timerDisplay = document.getElementById('timer');
@@ -98,29 +103,32 @@
         const resultText = document.getElementById('result');
         const finalScoreText = document.getElementById('finalScore');
 
-        // Game variables
+        // Canvas設定
+        canvas.width = 400;
+        canvas.height = 800;
+
+        // ゲーム変数
         let slime = {
-            x: 50,
-            y: 250,
-            width: 35,
-            height: 35,
+            x: 175,
+            y: 700,
+            width: 50,
+            height: 50,
             velocityY: 0,
             isJumping: false
         };
 
-        let gravity = 0.5;
-        let jumpPower = 12;
+        let gravity = 0.6;
+        let jumpPower = 15;
         let obstacles = [];
         let timer = 30;
         let score = 0;
         let gameActive = true;
-        let gameStarted = false;
 
-        // Event listeners
+        // イベントリスナー
         document.addEventListener('click', handleJump);
         document.addEventListener('touchstart', handleJump);
 
-        function handleJump() {
+        function handleJump(e) {
             if (!slime.isJumping && gameActive) {
                 slime.velocityY = -jumpPower;
                 slime.isJumping = true;
@@ -128,85 +136,83 @@
         }
 
         function drawSlime() {
-            // Draw cute slime
+            // かわいいスライム
             ctx.fillStyle = '#90EE90';
             ctx.beginPath();
             ctx.arc(slime.x + slime.width / 2, slime.y + slime.height / 2, slime.width / 2, 0, Math.PI * 2);
             ctx.fill();
             
-            // Draw eyes
+            // 目
             ctx.fillStyle = '#000';
             ctx.beginPath();
-            ctx.arc(slime.x + 12, slime.y + 10, 4, 0, Math.PI * 2);
+            ctx.arc(slime.x + 15, slime.y + 15, 5, 0, Math.PI * 2);
             ctx.fill();
             ctx.beginPath();
-            ctx.arc(slime.x + 23, slime.y + 10, 4, 0, Math.PI * 2);
+            ctx.arc(slime.x + 35, slime.y + 15, 5, 0, Math.PI * 2);
             ctx.fill();
             
-            // Draw mouth (smile)
+            // 口
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(slime.x + 17.5, slime.y + 18, 5, 0, Math.PI);
+            ctx.arc(slime.x + 25, slime.y + 30, 6, 0, Math.PI);
             ctx.stroke();
         }
 
         function drawObstacle(obstacle) {
-            // Draw spike obstacle
             ctx.fillStyle = '#FF6B6B';
             ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
             
-            // Draw spikes
+            // トゲ
             ctx.fillStyle = '#FF4444';
-            for (let i = 0; i < obstacle.width; i += 10) {
+            for (let i = 0; i < obstacle.width; i += 8) {
                 ctx.beginPath();
-                ctx.moveTo(obstacle.x + i + 5, obstacle.y);
-                ctx.lineTo(obstacle.x + i + 10, obstacle.y - 8);
-                ctx.lineTo(obstacle.x + i, obstacle.y - 8);
+                ctx.moveTo(obstacle.x + i + 4, obstacle.y);
+                ctx.lineTo(obstacle.x + i + 8, obstacle.y - 10);
+                ctx.lineTo(obstacle.x + i, obstacle.y - 10);
                 ctx.fill();
             }
         }
 
         function drawGround() {
             ctx.fillStyle = '#8B7355';
-            ctx.fillRect(0, 330, canvas.width, 70);
+            ctx.fillRect(0, 750, canvas.width, 50);
             
-            // Grass pattern
             ctx.fillStyle = '#228B22';
             for (let i = 0; i < canvas.width; i += 20) {
-                ctx.fillRect(i, 325, 15, 5);
+                ctx.fillRect(i, 745, 15, 5);
             }
         }
 
         function updateGame() {
             if (!gameActive) return;
 
-            // Update slime physics
+            // 物理
             slime.velocityY += gravity;
             slime.y += slime.velocityY;
 
-            // Ground collision
-            if (slime.y + slime.height >= 330) {
-                slime.y = 330 - slime.height;
+            // 地面衝突
+            if (slime.y + slime.height >= 750) {
+                slime.y = 750 - slime.height;
                 slime.isJumping = false;
                 slime.velocityY = 0;
             }
 
-            // Update obstacles
+            // 障害物更新
             for (let i = obstacles.length - 1; i >= 0; i--) {
                 obstacles[i].x -= 6;
                 
                 if (obstacles[i].x + obstacles[i].width < 0) {
                     obstacles.splice(i, 1);
                     score++;
-                    scoreDisplay.textContent = `⭐ Score: ${score}`;
+                    scoreDisplay.textContent = `⭐ ${score}`;
                 }
             }
 
-            // Check collisions
+            // 衝突判定
             checkCollisions();
 
-            // Render
+            // 描画
             render();
         }
 
@@ -224,14 +230,10 @@
         }
 
         function render() {
-            // Clear canvas with sky color
             ctx.fillStyle = '#87CEEB';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Draw clouds
             drawClouds();
-            
-            // Draw game elements
             drawGround();
             drawSlime();
             
@@ -242,25 +244,27 @@
 
         function drawClouds() {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            // 雲1
             ctx.beginPath();
-            ctx.arc(100, 50, 20, 0, Math.PI * 2);
-            ctx.arc(130, 45, 25, 0, Math.PI * 2);
-            ctx.arc(160, 50, 20, 0, Math.PI * 2);
+            ctx.arc(80, 80, 20, 0, Math.PI * 2);
+            ctx.arc(110, 75, 25, 0, Math.PI * 2);
+            ctx.arc(140, 80, 20, 0, Math.PI * 2);
             ctx.fill();
             
+            // 雲2
             ctx.beginPath();
-            ctx.arc(400, 80, 25, 0, Math.PI * 2);
-            ctx.arc(440, 75, 30, 0, Math.PI * 2);
-            ctx.arc(480, 80, 25, 0, Math.PI * 2);
+            ctx.arc(280, 120, 25, 0, Math.PI * 2);
+            ctx.arc(320, 115, 30, 0, Math.PI * 2);
+            ctx.arc(360, 120, 25, 0, Math.PI * 2);
             ctx.fill();
         }
 
         function spawnObstacle() {
-            const height = Math.random() * 40 + 30;
+            const height = Math.random() * 60 + 40;
             obstacles.push({
                 x: canvas.width,
-                y: 330 - height,
-                width: 30,
+                y: 750 - height,
+                width: 40,
                 height: height
             });
         }
@@ -280,16 +284,16 @@
             finalScoreText.textContent = `Score: ${score}`;
         }
 
-        // Game loop
+        // ゲームループ
         const gameLoop = setInterval(() => {
             updateGame();
         }, 1000 / 60);
 
-        // Timer
+        // タイマー
         const timerInterval = setInterval(() => {
             if (gameActive) {
                 timer--;
-                timerDisplay.textContent = `⏱️ Time: ${timer}s`;
+                timerDisplay.textContent = `⏱️ ${timer}s`;
                 
                 if (timer <= 0) {
                     endGame();
@@ -297,14 +301,14 @@
             }
         }, 1000);
 
-        // Spawn obstacles
+        // 障害物生成
         const spawnInterval = setInterval(() => {
             if (gameActive) {
                 spawnObstacle();
             }
-        }, 1200);
+        }, 1500);
 
-        // Start game indication
+        // 初期描画
         render();
     </script>
 </body>
