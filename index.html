@@ -3,31 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, maximum-scale=1.0">
-    <title>Slime Dash: Sensor Edition</title>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <title>Gothic Dash: Crimson Moon</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #111; font-family: 'Share Tech Mono', monospace; touch-action: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #050508; font-family: 'Cormorant Garamond', serif; touch-action: none; }
         #gameContainer { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; transform-origin: top left; transition: transform 0.3s ease; }
-        canvas { display: block; width: 100%; height: 100%; z-index: 1; pointer-events: auto; }
+        canvas { display: block; width: 100%; height: 100%; z-index: 1; }
         
         /* UI Layer */
         #uiLayer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
-        .hud-top { display: flex; justify-content: space-between; align-items: flex-start; }
-        .hud-box { background: rgba(0, 20, 10, 0.7); border: 1px solid #00ffcc; padding: 10px 15px; border-radius: 4px; color: #00ffcc; font-size: clamp(14px, 3vw, 20px); text-shadow: 0 0 5px #00ffcc; }
-        #warningDisplay { color: #ff3333; border-color: #ff3333; text-shadow: 0 0 5px #ff3333; opacity: 0; transition: opacity 0.1s; }
-        #warningDisplay.active { opacity: 1; animation: blink 0.2s infinite alternate; }
-        @keyframes blink { from { opacity: 1; } to { opacity: 0.3; } }
+        .hud-box { font-family: 'Cinzel', serif; color: #b30000; font-size: clamp(16px, 4vw, 24px); text-shadow: 0 0 10px #ff0000, 2px 2px 0px #000; letter-spacing: 2px; }
+        #warningDisplay { color: #ff0000; opacity: 0; transition: opacity 0.1s; font-weight: bold; }
+        #warningDisplay.active { opacity: 1; animation: heartbeat 0.5s infinite alternate; }
+        @keyframes heartbeat { from { transform: scale(1); } to { transform: scale(1.1); } }
         
-        /* Overlays */
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 15, 20, 0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; pointer-events: auto; backdrop-filter: blur(4px); transition: opacity 0.3s; }
-        .hidden { opacity: 0 !important; pointer-events: none !important; }
-        .overlay h1 { font-size: clamp(30px, 6vw, 60px); margin-bottom: 5px; color: #fff; letter-spacing: 2px; }
-        .overlay p { font-size: clamp(16px, 3vw, 24px); margin-bottom: 30px; color: #888; }
+        /* Overlays - バグ修正: .hiddenはdisplay:noneで完全に消す */
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 10, 0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; backdrop-filter: blur(5px); }
+        .hidden { display: none !important; }
         
-        /* Buttons - タッチしやすいように調整 */
-        .action-button { padding: 15px 40px; font-size: clamp(18px, 4vw, 24px); font-family: 'Share Tech Mono', monospace; background: rgba(0, 255, 204, 0.1); color: #00ffcc; border: 2px solid #00ffcc; border-radius: 8px; cursor: pointer; text-transform: uppercase; box-shadow: 0 0 10px rgba(0, 255, 204, 0.2); pointer-events: auto; }
-        .action-button:active { background: #00ffcc; color: #111; transform: scale(0.95); }
+        .overlay h1 { font-family: 'Cinzel', serif; font-size: clamp(36px, 8vw, 70px); margin-bottom: 5px; color: #d4af37; text-shadow: 0 0 20px #b30000, 0 5px 5px #000; letter-spacing: 4px; text-align: center; }
+        .overlay p { font-size: clamp(18px, 4vw, 28px); margin-bottom: 40px; color: #888; font-style: italic; }
+        
+        /* 確実なボタン */
+        .action-button { padding: 15px 50px; font-size: clamp(20px, 5vw, 28px); font-family: 'Cinzel', serif; font-weight: bold; background: rgba(179, 0, 0, 0.1); color: #d4af37; border: 2px solid #b30000; border-radius: 4px; cursor: pointer; pointer-events: auto; box-shadow: 0 0 15px rgba(179, 0, 0, 0.4) inset, 0 5px 15px rgba(0,0,0,0.8); transition: all 0.2s; }
+        .action-button:active { background: #b30000; color: #fff; transform: translateY(4px); box-shadow: 0 0 5px rgba(179, 0, 0, 0.8); }
     </style>
 </head>
 <body>
@@ -35,25 +35,22 @@
 <div id="gameContainer">
     <canvas id="gameCanvas"></canvas>
     <div id="uiLayer">
-        <div class="hud-top">
-            <div class="hud-box" id="scoreDisplay">DIST: 0000m</div>
-            <div class="hud-box" id="warningDisplay">⚠️ COLLISION WARN</div>
-        </div>
-        <div class="hud-bottom">
-            <div class="hud-box" id="speedDisplay" style="width:fit-content">SYS.SPEED: 1.0x</div>
+        <div style="display:flex; justify-content:space-between;">
+            <div class="hud-box" id="scoreDisplay">SOULS: 0</div>
+            <div class="hud-box" id="warningDisplay">DANGER</div>
         </div>
     </div>
     
     <div id="startScreen" class="overlay">
-        <h1>SENSOR DASH</h1>
-        <p>Analyze & Survive</p>
-        <button class="action-button" id="startBtn">SYSTEM START</button>
+        <h1>GOTHIC DASH</h1>
+        <p>Escape the Crimson Moon</p>
+        <button class="action-button" onclick="startGame()">ENTER</button>
     </div>
 
     <div id="gameOverScreen" class="overlay hidden">
-        <h1 style="color:#ff3333;">SYSTEM HALTED</h1>
-        <p id="finalScoreDisplay">Distance: 0m</p>
-        <button class="action-button" id="restartBtn" style="border-color:#ff3333; color:#ff3333;">REBOOT SYSTEM</button>
+        <h1 style="color:#880000; text-shadow: 0 0 20px #ff0000;">PERISHED</h1>
+        <p id="finalScoreDisplay">Souls Collected: 0</p>
+        <button class="action-button" onclick="startGame()">RESURRECT</button>
     </div>
 </div>
 
@@ -98,290 +95,331 @@ window.addEventListener('resize', handleOrientation);
 window.addEventListener('orientationchange', handleOrientation);
 
 /**
- * 2. ゲームロジック・物理
+ * 2. ゲームロジック
  */
-const GRAVITY = 0.8;
-const GROUND_Y = VIRTUAL_HEIGHT - 60;
-const JUMP_POWER = -13;
+const GRAVITY = 0.7;
+const GROUND_Y = VIRTUAL_HEIGHT - 40;
+const JUMP_POWER = -12;
 
-class Slime {
+// ★ 新キャラ：ゴスロリ少女
+class GothLoli {
     constructor() {
-        this.w = 40; this.h = 40;
-        this.x = 120; this.y = GROUND_Y - this.h;
+        this.w = 40; this.h = 60;
+        this.x = 100; this.y = GROUND_Y - this.h;
         this.vy = 0; this.jumpCount = 0;
-        this.squishX = 1; this.squishY = 1;
     }
     jump() {
         if (this.jumpCount < 2) {
             this.vy = JUMP_POWER;
             this.jumpCount++;
-            this.squishX = 0.6; this.squishY = 1.4;
+            createParticles(this.x + this.w/2, this.y + this.h, 15, '#b30000');
         }
     }
     update() {
         this.vy += GRAVITY;
         this.y += this.vy;
         if (this.y + this.h >= GROUND_Y) {
-            if(this.jumpCount > 0) {
-                this.squishX = 1.4; this.squishY = 0.6;
-            }
             this.y = GROUND_Y - this.h;
             this.vy = 0; this.jumpCount = 0;
         }
-        this.squishX += (1 - this.squishX) * 0.2;
-        this.squishY += (1 - this.squishY) * 0.2;
     }
     draw(ctx) {
+        // 走りアニメーション（上下の揺れ）
+        let bobbing = (this.vy === 0 && state.active) ? Math.sin(state.frames * 0.4) * 3 : 0;
+        let hairSway = (this.vy !== 0) ? 15 : Math.sin(state.frames * 0.2) * 5; // ジャンプ中は髪が上に
+
         ctx.save();
-        ctx.translate(this.x + this.w / 2, this.y + this.h);
-        ctx.scale(this.squishX, this.squishY);
-        
-        ctx.fillStyle = '#00ffcc';
+        ctx.translate(this.x + this.w/2, this.y + this.h + bobbing);
+
+        // --- 奥のツインテール ---
+        ctx.fillStyle = '#0a0a0a';
         ctx.beginPath();
-        ctx.moveTo(-this.w/2, 0);
-        ctx.lineTo(this.w/2, 0);
-        ctx.bezierCurveTo(this.w/2, -this.h*1.2, -this.w/2, -this.h*1.2, -this.w/2, 0);
+        ctx.ellipse(-8, -45 - hairSway/2, 10, 25, (30 + hairSway) * Math.PI/180, 0, Math.PI*2);
         ctx.fill();
-        
-        // センサーアイ
+
+        // --- ドレス（黒） ---
         ctx.fillStyle = '#111';
-        ctx.fillRect(-10, -25, 20, 6);
+        ctx.beginPath();
+        ctx.moveTo(0, -50); // 首元
+        ctx.lineTo(-20, -10); // スカート左
+        ctx.bezierCurveTo(-10, -5, 10, -5, 20, -10); // スカート裾アーチ
+        ctx.lineTo(5, -50); // 右肩
+        ctx.fill();
+
+        // --- ドレスのフリル（白） ---
+        ctx.fillStyle = '#ddd';
+        for(let i = -15; i <= 15; i += 8) {
+            ctx.beginPath();
+            ctx.arc(i, -10, 4, 0, Math.PI);
+            ctx.fill();
+        }
+
+        // --- 脚と靴 ---
+        ctx.fillStyle = '#ffe0d0'; // 肌色
+        ctx.fillRect(-8, -10, 4, 10);
+        ctx.fillRect(4, -10, 4, 10);
+        ctx.fillStyle = '#111'; // 黒い靴
+        ctx.fillRect(-10, -3, 6, 4);
+        ctx.fillRect(4, -3, 6, 4);
+
+        // --- 頭/顔 ---
+        ctx.fillStyle = '#ffe0d0';
+        ctx.beginPath();
+        ctx.arc(0, -50, 14, 0, Math.PI*2);
+        ctx.fill();
+
+        // --- 手前のツインテールと前髪 ---
+        ctx.fillStyle = '#0a0a0a';
+        // 前髪
+        ctx.beginPath();
+        ctx.arc(0, -52, 15, Math.PI, 0);
+        ctx.fill();
+        ctx.fillRect(-14, -52, 28, 8); // パッツン前髪
+        
+        // 手前ツインテール
+        ctx.beginPath();
+        ctx.ellipse(5, -45 - hairSway/2, 10, 25, (-20 - hairSway) * Math.PI/180, 0, Math.PI*2);
+        ctx.fill();
+
+        // --- ヘッドドレス（白いレース） ---
         ctx.fillStyle = '#fff';
-        ctx.fillRect(-8 + (state.frames % 20 > 10 ? 2 : 0), -24, 4, 4); // スキャン風
-        ctx.fillRect(4 + (state.frames % 20 > 10 ? -2 : 0), -24, 4, 4);
+        ctx.beginPath();
+        ctx.ellipse(0, -64, 12, 4, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#b30000'; // 赤いリボン
+        ctx.fillRect(-3, -66, 6, 6);
+
+        // --- 瞳（紅い目、右向き） ---
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(6, -48, 4, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#b30000';
+        ctx.beginPath(); ctx.arc(7, -48, 2, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(7.5, -48, 1, 0, Math.PI*2); ctx.fill();
+
         ctx.restore();
     }
 }
 
-class Obstacle {
+// ★ 障害物：墓石
+class Tombstone {
     constructor(speed) {
         this.w = 30 + Math.random() * 20;
-        this.h = 40 + Math.random() * 40;
+        this.h = 40 + Math.random() * 30;
         this.x = VIRTUAL_WIDTH + 50;
         this.y = GROUND_Y - this.h;
         this.speed = speed;
     }
     update() { this.x -= 6 * this.speed; }
     draw(ctx) {
-        ctx.fillStyle = '#222';
-        ctx.strokeStyle = '#555';
+        ctx.fillStyle = '#2a2a30';
+        ctx.strokeStyle = '#111';
         ctx.lineWidth = 2;
+        
+        // 墓石の形（上部が丸い）
         ctx.beginPath();
-        ctx.rect(this.x, this.y, this.w, this.h);
+        ctx.moveTo(this.x, this.y + this.h);
+        ctx.lineTo(this.x, this.y + 15);
+        ctx.arc(this.x + this.w/2, this.y + 15, this.w/2, Math.PI, 0);
+        ctx.lineTo(this.x + this.w, this.y + this.h);
+        ctx.closePath();
         ctx.fill();
         ctx.stroke();
-        
-        // 危険模様
-        ctx.strokeStyle = '#ff3333';
-        ctx.beginPath();
-        ctx.moveTo(this.x, this.y + 10);
-        ctx.lineTo(this.x + this.w, this.y + 10);
-        ctx.stroke();
+
+        // 墓石の十字架
+        ctx.fillStyle = '#111';
+        let cx = this.x + this.w/2;
+        let cy = this.y + 25;
+        ctx.fillRect(cx - 2, cy - 10, 4, 20);
+        ctx.fillRect(cx - 8, cy - 2, 16, 4);
     }
 }
 
-class RainDrop {
-    constructor() {
-        this.x = Math.random() * VIRTUAL_WIDTH * 1.5;
-        this.y = Math.random() * -VIRTUAL_HEIGHT;
-        this.speed = 10 + Math.random() * 10;
-        this.len = 10 + Math.random() * 20;
+// 魔法陣パーティクル
+class Particle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y;
+        this.vx = (Math.random() - 0.5) * 6;
+        this.vy = (Math.random() - 1) * 6;
+        this.life = 1.0; this.color = color;
+        this.size = Math.random() * 3 + 1;
     }
-    update(wind) {
-        this.y += this.speed;
-        this.x -= wind * 5; // 向かい風の影響
-        if (this.y > GROUND_Y) {
-            this.y = -50;
-            this.x = Math.random() * VIRTUAL_WIDTH * 1.5;
-        }
+    update() {
+        this.x += this.vx; this.y += this.vy;
+        this.life -= 0.04;
     }
     draw(ctx) {
-        ctx.strokeStyle = 'rgba(100, 200, 255, 0.3)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(this.x, this.y);
-        ctx.lineTo(this.x - 5, this.y + this.len);
-        ctx.stroke();
+        ctx.globalAlpha = Math.max(0, this.life);
+        ctx.fillStyle = this.color;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1.0;
     }
 }
 
 /**
- * 3. メインループとセンサー処理
+ * 3. メインシステム
  */
 let state = { active: false, score: 0, speedMulti: 1.0, frames: 0 };
-let slime, obstacles, rain;
+let player, obstacles, particles;
+let animId;
 
-function initGame() {
-    slime = new Slime();
-    obstacles = [];
-    rain = Array.from({length: 50}, () => new RainDrop());
+function createParticles(x, y, count, color) {
+    for (let i = 0; i < count; i++) particles.push(new Particle(x, y, color));
+}
+
+// ★ 確実なスタート関数
+window.startGame = function() {
+    player = new GothLoli();
+    obstacles = []; particles = [];
     state = { active: true, score: 0, speedMulti: 1.0, frames: 0 };
+    
+    // UIを隠す（display:noneにする）
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('gameOverScreen').classList.add('hidden');
     document.getElementById('warningDisplay').classList.remove('active');
-    requestAnimationFrame(gameLoop);
-}
+    
+    // 多重ループ防止
+    if(animId) cancelAnimationFrame(animId);
+    gameLoop();
+};
 
 function gameOver() {
     state.active = false;
     document.getElementById('warningDisplay').classList.remove('active');
-    document.getElementById('finalScoreDisplay').textContent = `Distance: ${Math.floor(state.score)}m`;
+    document.getElementById('finalScoreDisplay').textContent = `Souls Collected: ${Math.floor(state.score)}`;
     document.getElementById('gameOverScreen').classList.remove('hidden');
+    createParticles(player.x + player.w/2, player.y + player.h/2, 40, '#880000');
 }
 
-// 予測軌道を描画する関数
-function drawTrajectory(ctx, slime) {
+// 魔眼センサーと軌道
+function drawMagicSensor(ctx, player, obstacles) {
+    let nearest = obstacles.find(o => o.x > player.x);
+    if (!nearest) return;
+
+    let dist = nearest.x - (player.x + player.w);
+    let isWarning = dist < 200;
+
+    // 魔力軌道（ジャンプ予測線）
     ctx.beginPath();
-    ctx.strokeStyle = 'rgba(0, 255, 204, 0.4)';
-    ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = 'rgba(179, 0, 0, 0.3)';
+    ctx.setLineDash([4, 6]);
     ctx.lineWidth = 2;
-    
-    let simX = slime.x + slime.w/2;
-    let simY = slime.y + slime.h;
-    let simVy = slime.vy === 0 ? JUMP_POWER : slime.vy; // 接地時はジャンプしたと仮定
-    
+    let simX = player.x + player.w/2;
+    let simY = player.y + player.h;
+    let simVy = player.vy === 0 ? JUMP_POWER : player.vy;
     ctx.moveTo(simX, simY);
     for(let i=0; i<30; i++) {
-        simX += 6 * state.speedMulti; // 仮の進行速度
-        simVy += GRAVITY;
-        simY += simVy;
-        if(simY >= GROUND_Y) {
-            ctx.lineTo(simX, GROUND_Y);
-            break;
-        }
+        simX += 6 * state.speedMulti;
+        simVy += GRAVITY; simY += simVy;
+        if(simY >= GROUND_Y) { ctx.lineTo(simX, GROUND_Y); break; }
         ctx.lineTo(simX, simY);
     }
-    ctx.stroke();
-    ctx.setLineDash([]);
-}
+    ctx.stroke(); ctx.setLineDash([]);
 
-// 前方センサーの描画と警告判定
-function drawSensorAndCheckWarning(ctx, slime, obstacles) {
-    let nearestObs = obstacles.find(o => o.x > slime.x);
-    if (!nearestObs) return;
-
-    let dist = nearestObs.x - (slime.x + slime.w);
-    let sensorColor = '#00ffcc'; // 緑
-    let isWarning = false;
-
-    if (dist < 300) sensorColor = '#ffcc00'; // 黄
-    if (dist < 150) {
-        sensorColor = '#ff3333'; // 赤
-        isWarning = true;
-    }
-
-    // レーザー描画
-    ctx.strokeStyle = sensorColor;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(slime.x + slime.w, slime.y + slime.h/2);
-    ctx.lineTo(nearestObs.x, slime.y + slime.h/2);
-    ctx.stroke();
-
-    // 距離テキスト描画
-    ctx.fillStyle = sensorColor;
-    ctx.font = '12px "Share Tech Mono"';
-    ctx.fillText(`${Math.floor(dist)}m`, slime.x + slime.w + 10, slime.y + slime.h/2 - 5);
-
-    // UI警告の切り替え
-    const warningUI = document.getElementById('warningDisplay');
-    if(isWarning && slime.y + slime.h >= nearestObs.y) {
-        warningUI.classList.add('active');
+    // 魔眼レーザー
+    if (isWarning && player.y + player.h >= nearest.y) {
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(player.x + player.w, player.y + player.h/2 - 10); // 目線から
+        ctx.lineTo(nearest.x, player.y + player.h/2 - 10);
+        ctx.stroke();
+        document.getElementById('warningDisplay').classList.add('active');
     } else {
-        warningUI.classList.remove('active');
+        document.getElementById('warningDisplay').classList.remove('active');
     }
 }
 
 function update() {
     if (!state.active) return;
     state.frames++;
-    state.speedMulti = Math.min(2.0, 1.0 + (state.score / 1500));
+    state.speedMulti = Math.min(2.5, 1.0 + (state.score / 1000));
     state.score += 0.1 * state.speedMulti;
     
-    document.getElementById('scoreDisplay').textContent = `DIST: ${String(Math.floor(state.score)).padStart(4, '0')}m`;
-    document.getElementById('speedDisplay').textContent = `SYS.SPEED: ${state.speedMulti.toFixed(2)}x`;
+    document.getElementById('scoreDisplay').textContent = `SOULS: ${Math.floor(state.score)}`;
 
-    slime.update();
-    rain.forEach(r => r.update(state.speedMulti));
+    player.update();
+    particles.forEach((p, i) => { p.update(); if (p.life <= 0) particles.splice(i, 1); });
 
-    if (state.frames % Math.floor(Math.max(50, 100 - state.speedMulti*20)) === 0) {
-        obstacles.push(new Obstacle(state.speedMulti));
+    if (state.frames % Math.floor(Math.max(40, 90 - state.speedMulti*15)) === 0) {
+        obstacles.push(new Tombstone(state.speedMulti));
     }
 
     obstacles.forEach((obs, i) => {
         obs.update();
         if (obs.x + obs.w < 0) obstacles.splice(i, 1);
         
-        // 当たり判定
-        let margin = 4;
-        if (slime.x + margin < obs.x + obs.w && slime.x + slime.w - margin > obs.x &&
-            slime.y + margin < obs.y + obs.h && slime.y + slime.h - margin > obs.y) {
+        let hitbox = 8; // スカートの分、当たり判定を少し甘めに
+        if (player.x + hitbox < obs.x + obs.w && player.x + player.w - hitbox > obs.x &&
+            player.y + hitbox < obs.y + obs.h && player.y + player.h > obs.y) {
             gameOver();
         }
     });
 }
 
-function draw() {
-    // 背景
-    ctx.fillStyle = '#0a0f14';
+function drawBackground() {
+    // 漆黒の空
+    ctx.fillStyle = '#08050e';
     ctx.fillRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
     
-    // グリッド線 (速度感)
-    ctx.strokeStyle = 'rgba(0, 255, 204, 0.1)';
+    // 赤い月（パララックス）
+    let moonX = 600 - (state.frames * 0.5) % 1500;
+    ctx.beginPath();
+    ctx.arc(moonX, 150, 80, 0, Math.PI*2);
+    ctx.fillStyle = '#b30000';
+    ctx.shadowBlur = 40; ctx.shadowColor = '#ff0000';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    // 赤い雨（血の雨）
+    ctx.strokeStyle = 'rgba(179, 0, 0, 0.4)';
     ctx.lineWidth = 1;
-    let offset = (state.frames * 6 * state.speedMulti) % 50;
-    for(let i=0; i<VIRTUAL_WIDTH+50; i+=50) {
-        ctx.beginPath(); ctx.moveTo(i-offset, 0); ctx.lineTo(i-offset, VIRTUAL_HEIGHT); ctx.stroke();
+    for(let i=0; i<30; i++) {
+        let rx = (Math.random() * VIRTUAL_WIDTH * 2) - (state.frames * 10) % (VIRTUAL_WIDTH*2);
+        let ry = (Math.random() * VIRTUAL_HEIGHT + state.frames * 15) % VIRTUAL_HEIGHT;
+        ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + 15); ctx.stroke();
     }
 
-    // 地面
+    // 地面（霧と黒土）
     ctx.fillStyle = '#111';
     ctx.fillRect(0, GROUND_Y, VIRTUAL_WIDTH, VIRTUAL_HEIGHT - GROUND_Y);
-    ctx.strokeStyle = '#00ffcc';
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(VIRTUAL_WIDTH, GROUND_Y); ctx.stroke();
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, GROUND_Y, VIRTUAL_WIDTH, 2);
+}
 
-    // 軌道・センサー
+function draw() {
+    drawBackground();
     if(state.active) {
-        drawTrajectory(ctx, slime);
-        drawSensorAndCheckWarning(ctx, slime, obstacles);
+        drawMagicSensor(ctx, player, obstacles);
     }
-
-    // 雨、障害物、スライム
-    rain.forEach(r => r.draw(ctx));
     obstacles.forEach(o => o.draw(ctx));
-    slime.draw(ctx);
+    
+    if(state.active || player) player.draw(ctx);
+    particles.forEach(p => p.draw(ctx));
 }
 
 function gameLoop() {
     update();
     draw();
-    if(state.active) requestAnimationFrame(gameLoop);
+    if(state.active) {
+        animId = requestAnimationFrame(gameLoop);
+    }
 }
 
-// 4. イベントリスナー（ボタンバグ修正版）
-function handleCanvasInput(e) {
-    e.preventDefault(); // スクロール防止
-    if (state.active) slime.jump();
+// 4. キャンバス操作（ボタン操作と完全に分離）
+function handleInput(e) {
+    e.preventDefault(); // キャンバスでのスクロール防止
+    if (state.active) player.jump();
 }
-// キャンバスだけにタッチイベントを付与（UIのボタンを邪魔しない）
-canvas.addEventListener('mousedown', handleCanvasInput);
-canvas.addEventListener('touchstart', handleCanvasInput, {passive: false});
-
-// ボタンのイベント（伝播を止める）
-function handleBtnInput(e, callback) {
-    e.stopPropagation();
-    if(e.type === 'touchstart') e.preventDefault();
-    callback();
-}
-document.getElementById('startBtn').addEventListener('click', (e) => handleBtnInput(e, initGame));
-document.getElementById('startBtn').addEventListener('touchstart', (e) => handleBtnInput(e, initGame), {passive: false});
-document.getElementById('restartBtn').addEventListener('click', (e) => handleBtnInput(e, initGame));
-document.getElementById('restartBtn').addEventListener('touchstart', (e) => handleBtnInput(e, initGame), {passive: false});
+// キャンバス自体をタッチした時だけジャンプ（UIボタンを邪魔しない）
+canvas.addEventListener('mousedown', handleInput);
+canvas.addEventListener('touchstart', handleInput, {passive: false});
 
 // 初期描画
 handleOrientation();
-draw();
+player = new GothLoli(); // スタート画面用の初期描画
+drawBackground();
+player.draw(ctx);
 
 </script>
 </body>
