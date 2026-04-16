@@ -3,582 +3,388 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, maximum-scale=1.0">
-    <title>Slime Jump Dash!</title>
+    <title>Slime Jump Dash: Neon Drift</title>
+    <link href="https://fonts.googleapis.com/css2?family=Righteous&display=swap" rel="stylesheet">
     <style>
-        /* --- リセットと基本設定 --- */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none; /* iOS Safari用 */
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
         body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #000; /* 回転時の余白を黒に */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            touch-action: none; /* デフォルトのタッチ操作を無効化 */
+            width: 100%; height: 100%; overflow: hidden; background-color: #0f0f1b;
+            font-family: 'Righteous', cursive; touch-action: none;
         }
-
-        /* --- ゲームコンテナ --- */
         #gameContainer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transform-origin: top left; /* 回転の基点 */
-            transition: transform 0.3s ease;
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            transform-origin: top left; transition: transform 0.3s ease;
         }
-
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            /* クリックイベントを透過しないように */
-            pointer-events: auto; 
-        }
-
-        /* --- UI要素 --- */
-        #uiLayer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none; /* UIの後ろのCanvasをクリック可能に */
-            z-index: 10;
-        }
-
+        canvas { display: block; width: 100%; height: 100%; pointer-events: auto; }
+        #uiLayer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         .score-box {
-            position: absolute;
-            top: 5%;
-            left: 5%;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: clamp(16px, 4vw, 24px); /* 画面サイズに合わせて拡縮 */
-            font-weight: bold;
-            color: #333;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border: 2px solid #fff;
+            position: absolute; top: 5%; left: 5%;
+            font-size: clamp(24px, 5vw, 36px); color: #fff;
+            text-shadow: 0 0 10px #00f2fe, 0 0 20px #00f2fe; letter-spacing: 2px;
         }
-
-        /* --- 画面オーバーレイ (開始/終了) --- */
         .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            z-index: 20;
-            pointer-events: auto;
-            backdrop-filter: blur(3px);
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 15, 27, 0.8); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; color: white;
+            z-index: 20; pointer-events: auto; backdrop-filter: blur(5px);
+            transition: opacity 0.3s;
         }
-
-        .hidden {
-            display: none !important;
-        }
-
+        .hidden { opacity: 0; pointer-events: none; }
         .overlay h1 {
-            font-size: clamp(30px, 8vw, 60px);
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            color: #FFD700;
+            font-size: clamp(40px, 8vw, 80px); margin-bottom: 10px;
+            color: #fff; text-shadow: 0 0 10px #ff416c, 0 0 20px #ff416c, 0 0 40px #ff4b2b;
+            animation: pulse 1.5s infinite alternate;
         }
-
-        .overlay p {
-            font-size: clamp(18px, 4vw, 30px);
-            margin-bottom: 30px;
-        }
-
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+        .overlay p { font-size: clamp(20px, 4vw, 30px); margin-bottom: 30px; color: #aaa; }
         .action-button {
-            padding: 15px 40px;
-            font-size: clamp(18px, 4vw, 24px);
-            font-weight: bold;
-            background: linear-gradient(to bottom, #ff416c, #ff4b2b);
-            color: white;
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            box-shadow: 0 6px 10px rgba(0,0,0,0.3);
-            transition: transform 0.1s, box-shadow 0.1s;
+            padding: 15px 50px; font-size: clamp(20px, 4vw, 28px); font-family: 'Righteous', cursive;
+            background: transparent; color: #00f2fe; border: 2px solid #00f2fe;
+            border-radius: 50px; cursor: pointer; text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.5) inset, 0 0 20px rgba(0, 242, 254, 0.5);
+            transition: all 0.2s;
         }
-
-        .action-button:active {
-            transform: translateY(2px);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-
-        .instructions {
-            margin-top: 20px;
-            font-size: clamp(14px, 3vw, 18px);
-            color: #eee;
-            text-align: center;
-        }
+        .action-button:active { background: #00f2fe; color: #0f0f1b; box-shadow: 0 0 30px #00f2fe; transform: scale(0.95); }
+        .instructions { margin-top: 30px; font-size: clamp(14px, 3vw, 18px); color: #888; text-align: center; font-family: sans-serif;}
     </style>
 </head>
 <body>
 
 <div id="gameContainer">
     <canvas id="gameCanvas"></canvas>
+    <div id="uiLayer"><div class="score-box" id="scoreDisplay">00000</div></div>
     
-    <div id="uiLayer">
-        <div class="score-box" id="scoreDisplay">Score: 0</div>
-    </div>
-
     <div id="startScreen" class="overlay">
-        <h1>Slime Dash!</h1>
-        <p>Run as far as you can</p>
+        <h1>NEON SLIME</h1>
+        <p>Survive the cyber grid</p>
         <button class="action-button" id="startBtn">TAP TO START</button>
-        <div class="instructions">
-            Tap the screen to Jump<br>
-            Tap again for Double Jump!
-        </div>
+        <div class="instructions">Tap = Jump / Double Tap = Double Jump</div>
     </div>
 
     <div id="gameOverScreen" class="overlay hidden">
-        <h1>Game Over</h1>
+        <h1>SYSTEM FAILURE</h1>
         <p id="finalScoreDisplay">Score: 0</p>
-        <button class="action-button" id="restartBtn">TRY AGAIN</button>
+        <button class="action-button" id="restartBtn">REBOOT</button>
     </div>
 </div>
 
 <script>
 /**
- * スマホ横向き（ランドスケープ）強制設定
+ * 1. 画面制御とRetina(DPR)対応
  */
 const gameContainer = document.getElementById('gameContainer');
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const VIRTUAL_WIDTH = 1000;
+const VIRTUAL_HEIGHT = 500;
+let scaleRatio = 1;
 
 function handleOrientation() {
-    // 画面の幅と高さを取得
     let width = window.innerWidth;
     let height = window.innerHeight;
-
-    // 縦向きの場合 (幅 < 高さ)
     if (width < height) {
-        // コンテナのサイズを反転させて設定
         gameContainer.style.width = height + 'px';
         gameContainer.style.height = width + 'px';
-        
-        // 90度回転させて、左上に配置し直す
         gameContainer.style.transform = `rotate(90deg) translateY(-${width}px)`;
+        resizeCanvas(height, width);
     } else {
-        // 横向きの場合は通常通り
         gameContainer.style.width = width + 'px';
         gameContainer.style.height = height + 'px';
         gameContainer.style.transform = 'none';
+        resizeCanvas(width, height);
     }
-    
-    // リサイズ時にCanvasのサイズも再設定する処理を呼び出す
-    resizeCanvas();
 }
 
-// 画面の回転やリサイズ時にイベントを発火
+function resizeCanvas(w, h) {
+    const dpr = window.devicePixelRatio || 1; // スマホの高画質ディスプレイ対応
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    
+    const scaleX = w / VIRTUAL_WIDTH;
+    const scaleY = h / VIRTUAL_HEIGHT;
+    scaleRatio = Math.min(scaleX, scaleY); // アスペクト比を維持
+    
+    // 中央寄せのためのオフセット
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // リセット
+    ctx.scale(dpr, dpr);
+    ctx.translate((w - VIRTUAL_WIDTH * scaleRatio) / 2, (h - VIRTUAL_HEIGHT * scaleRatio) / 2);
+    ctx.scale(scaleRatio, scaleRatio);
+}
 window.addEventListener('resize', handleOrientation);
 window.addEventListener('orientationchange', handleOrientation);
 
+/**
+ * 2. プロシージャル・オーディオ (Web Audio API)
+ */
+let audioCtx;
+function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playSound(type) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    const now = audioCtx.currentTime;
+    if (type === 'jump') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+    } else if (type === 'hit') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now); osc.stop(now + 0.2);
+    }
+}
 
 /**
- * ゲームコアロジック
+ * 3. ゲームクラス群
  */
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-const scoreDisplay = document.getElementById('scoreDisplay');
-const startScreen = document.getElementById('startScreen');
-const gameOverScreen = document.getElementById('gameOverScreen');
-const finalScoreDisplay = document.getElementById('finalScoreDisplay');
-const startBtn = document.getElementById('startBtn');
-const restartBtn = document.getElementById('restartBtn');
-
-// 仮想画面サイズ（ゲームロジックはこのサイズをベースに計算し、描画時にスケールする）
-const VIRTUAL_WIDTH = 800;
-const VIRTUAL_HEIGHT = 450;
-let scaleX = 1;
-let scaleY = 1;
-
-// ゲーム状態
-let state = {
-    isActive: false,
-    score: 0,
-    speedMultiplier: 1.0,
-    frames: 0
-};
-
-// エンティティ
-let slime;
-let obstacles = [];
-let particles = [];
-let backgroundObjects = [];
-
-// 定数
-const GRAVITY = 0.6;
-const GROUND_Y = VIRTUAL_HEIGHT - 60; // 地面の高さ
+const GRAVITY = 0.7;
+const GROUND_Y = VIRTUAL_HEIGHT - 80;
 
 class Slime {
     constructor() {
-        this.width = 40;
-        this.height = 40;
-        this.x = 100;
-        this.y = GROUND_Y - this.height;
-        this.vy = 0;
-        this.jumpPower = -12;
-        this.jumpCount = 0;
-        this.maxJumps = 2; // 二段ジャンプ
-        
-        // アニメーション用
-        this.squishY = 1;
-        this.squishX = 1;
+        this.w = 50; this.h = 40;
+        this.x = 150; this.y = GROUND_Y - this.h;
+        this.vy = 0; this.jumpCount = 0;
+        this.squishX = 1; this.squishY = 1;
+        this.trails = []; // 残像エフェクト用
     }
-
     jump() {
-        if (this.jumpCount < this.maxJumps) {
-            this.vy = this.jumpPower;
-            this.jumpCount++;
-            
-            // ジャンプ時の変形
-            this.squishX = 0.7;
-            this.squishY = 1.3;
-            
-            createParticles(this.x + this.width/2, this.y + this.height, 5, '#fff');
+        if (this.jumpCount < 2) {
+            this.vy = -14; this.jumpCount++;
+            this.squishX = 0.6; this.squishY = 1.4;
+            playSound('jump');
+            createParticles(this.x + this.w/2, this.y + this.h, 10, '#00f2fe');
         }
     }
-
     update() {
         this.vy += GRAVITY;
         this.y += this.vy;
-
-        // 地面との衝突
-        if (this.y + this.height >= GROUND_Y) {
-            this.y = GROUND_Y - this.height;
-            this.vy = 0;
-            
+        if (this.y + this.h >= GROUND_Y) {
             if (this.jumpCount > 0) {
-                // 着地時の変形とパーティクル
-                this.squishX = 1.3;
-                this.squishY = 0.7;
-                createParticles(this.x + this.width/2, this.y + this.height, 8, '#ccc');
+                this.squishX = 1.4; this.squishY = 0.6;
+                createParticles(this.x + this.w/2, this.y + this.h, 5, '#00f2fe');
             }
-            this.jumpCount = 0;
+            this.y = GROUND_Y - this.h;
+            this.vy = 0; this.jumpCount = 0;
         }
+        this.squishX += (1 - this.squishX) * 0.15;
+        this.squishY += (1 - this.squishY) * 0.15;
 
-        // 変形を元に戻す（バネのような動き）
-        this.squishX += (1 - this.squishX) * 0.2;
-        this.squishY += (1 - this.squishY) * 0.2;
-        
-        // 待機時の呼吸アニメーション (接地時のみ)
-        if (this.jumpCount === 0) {
-             let breathe = Math.sin(state.frames * 0.1) * 0.05;
-             this.squishY = 1 + breathe;
-             this.squishX = 1 - breathe;
+        // 残像の記録
+        if (state.frames % 3 === 0) {
+            this.trails.push({x: this.x, y: this.y, sx: this.squishX, sy: this.squishY, alpha: 0.5});
+            if (this.trails.length > 5) this.trails.shift();
         }
     }
-
     draw(ctx) {
+        // 残像の描画
+        this.trails.forEach((t, i) => {
+            t.alpha -= 0.05;
+            ctx.save();
+            ctx.translate(t.x + this.w / 2, t.y + this.h);
+            ctx.scale(t.sx, t.sy);
+            ctx.fillStyle = `rgba(0, 242, 254, ${Math.max(0, t.alpha)})`;
+            ctx.beginPath();
+            ctx.arc(0, -this.h/2, this.w/2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+        });
+
         ctx.save();
-        // 変形の中心をスライムの底辺にする
-        ctx.translate(this.x + this.width / 2, this.y + this.height);
+        ctx.translate(this.x + this.w / 2, this.y + this.h);
         ctx.scale(this.squishX, this.squishY);
         
-        // 本体
-        ctx.fillStyle = '#32CD32';
+        // 本体（ネオングロー効果）
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#00f2fe';
+        ctx.fillStyle = '#00f2fe';
         ctx.beginPath();
-        // 下半分は平らに、上は丸く
-        ctx.moveTo(-this.width/2, 0);
-        ctx.lineTo(this.width/2, 0);
-        ctx.bezierCurveTo(this.width/2, -this.height, -this.width/2, -this.height, -this.width/2, 0);
+        ctx.moveTo(-this.w/2, 0);
+        ctx.lineTo(this.w/2, 0);
+        ctx.bezierCurveTo(this.w/2, -this.h*1.2, -this.w/2, -this.h*1.2, -this.w/2, 0);
         ctx.fill();
+        ctx.shadowBlur = 0; // リセット
         
-        // 目
+        // サイバーな目
         ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(-10, -25, 6, 0, Math.PI * 2);
-        ctx.arc(10, -25, 6, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(-8, -25, 3, 0, Math.PI * 2);
-        ctx.arc(12, -25, 3, 0, Math.PI * 2);
-        ctx.fill();
-
+        ctx.fillRect(-12, -25, 8, 4);
+        ctx.fillRect(4, -25, 8, 4);
         ctx.restore();
     }
 }
 
 class Obstacle {
     constructor() {
-        this.width = Math.random() > 0.5 ? 30 : 50; // 幅は2種類
-        this.height = Math.random() * 50 + 30; // 高さはランダム
-        this.x = VIRTUAL_WIDTH;
-        this.y = GROUND_Y - this.height;
+        this.w = Math.random() > 0.5 ? 40 : 60;
+        this.h = Math.random() * 60 + 40;
+        this.x = VIRTUAL_WIDTH + 100;
+        this.y = GROUND_Y - this.h;
         this.passed = false;
-        // トゲトゲのデザイン用
-        this.spikes = Math.floor(this.width / 10);
+        this.type = Math.random() > 0.5 ? 'spike' : 'block';
     }
-
-    update() {
-        // 進行速度（基本速度 + 時間経過によるスピードアップ）
-        const baseSpeed = 5;
-        this.x -= baseSpeed * state.speedMultiplier;
-    }
-
+    update() { this.x -= 8 * state.speedMulti; }
     draw(ctx) {
-        ctx.fillStyle = '#444';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#ff416c';
+        ctx.fillStyle = '#ff416c';
         
-        // 本体
         ctx.beginPath();
-        ctx.moveTo(this.x, this.y);
-        
-        // トゲトゲのパスを描画
-        let spikeWidth = this.width / this.spikes;
-        for (let i = 0; i < this.spikes; i++) {
-            ctx.lineTo(this.x + spikeWidth * i + spikeWidth/2, this.y - 15);
-            ctx.lineTo(this.x + spikeWidth * (i + 1), this.y);
+        if(this.type === 'spike') {
+            ctx.moveTo(this.x, this.y + this.h);
+            ctx.lineTo(this.x + this.w/2, this.y);
+            ctx.lineTo(this.x + this.w, this.y + this.h);
+        } else {
+            ctx.rect(this.x, this.y, this.w, this.h);
         }
-        
-        ctx.lineTo(this.x + this.width, this.y + this.height);
-        ctx.lineTo(this.x, this.y + this.height);
-        ctx.closePath();
         ctx.fill();
+        ctx.shadowBlur = 0;
         
-        // ハイライト
-        ctx.fillStyle = '#666';
-        ctx.fillRect(this.x + 5, this.y + 5, this.width - 10, this.height - 5);
+        // 内側のハイライト
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        if(this.type === 'block') ctx.fillRect(this.x+5, this.y+5, this.w-10, 5);
     }
 }
 
 class Particle {
     constructor(x, y, color) {
-        this.x = x;
-        this.y = y;
-        this.vx = (Math.random() - 0.5) * 4;
-        this.vy = (Math.random() - 1) * 4;
-        this.life = 1.0;
-        this.color = color;
-        this.size = Math.random() * 4 + 2;
+        this.x = x; this.y = y;
+        this.vx = (Math.random() - 0.5) * 10;
+        this.vy = (Math.random() - 1) * 10;
+        this.life = 1.0; this.color = color;
+        this.size = Math.random() * 5 + 2;
     }
     update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.life -= 0.05;
+        this.x += this.vx; this.y += this.vy;
+        this.vy += 0.2; // パーティクルにも重力
+        this.life -= 0.03;
     }
     draw(ctx) {
         ctx.globalAlpha = Math.max(0, this.life);
         ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
-        ctx.fill();
+        ctx.fillRect(this.x, this.y, this.size, this.size);
         ctx.globalAlpha = 1.0;
     }
 }
 
-class Cloud {
-    constructor() {
-        this.x = VIRTUAL_WIDTH;
-        this.y = Math.random() * (VIRTUAL_HEIGHT / 2);
-        this.speed = Math.random() * 1 + 0.5;
-        this.size = Math.random() * 0.5 + 0.5;
-    }
-    update() {
-        this.x -= this.speed;
-    }
-    draw(ctx) {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.scale(this.size, this.size);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-        ctx.beginPath();
-        ctx.arc(0, 0, 20, 0, Math.PI * 2);
-        ctx.arc(20, -10, 25, 0, Math.PI * 2);
-        ctx.arc(40, 0, 20, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    }
-}
-
-// パーティクル生成ヘルパー
 function createParticles(x, y, count, color) {
-    for (let i = 0; i < count; i++) {
-        particles.push(new Particle(x, y, color));
-    }
+    for (let i = 0; i < count; i++) particles.push(new Particle(x, y, color));
 }
 
-
-// Canvasのリサイズとスケーリング
-function resizeCanvas() {
-    // コンテナ（ゲーム領域）の実際のピクセルサイズを取得
-    const rect = gameContainer.getBoundingClientRect();
-    
-    // Canvasの描画解像度をコンテナサイズに合わせる
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-    
-    // 仮想サイズから実サイズへのスケール比率を計算
-    scaleX = canvas.width / VIRTUAL_WIDTH;
-    scaleY = canvas.height / VIRTUAL_HEIGHT;
-}
+/**
+ * 4. メインループとステート管理
+ */
+let state = { active: false, score: 0, speedMulti: 1.0, frames: 0, shake: 0 };
+let slime, obstacles, particles;
 
 function initGame() {
     slime = new Slime();
-    obstacles = [];
-    particles = [];
-    backgroundObjects = [];
-    state.score = 0;
-    state.speedMultiplier = 1.0;
-    state.frames = 0;
-    updateScore();
-    
-    // 初期雲をいくつか配置
-    for(let i=0; i<3; i++){
-        let cloud = new Cloud();
-        cloud.x = Math.random() * VIRTUAL_WIDTH;
-        backgroundObjects.push(cloud);
-    }
-}
-
-function startGame() {
-    initGame();
-    state.isActive = true;
-    startScreen.classList.add('hidden');
-    gameOverScreen.classList.add('hidden');
-    gameLoop();
+    obstacles = []; particles = [];
+    state = { active: true, score: 0, speedMulti: 1.0, frames: 0, shake: 0 };
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    initAudio(); // 音声コンテキスト起動
 }
 
 function gameOver() {
-    state.isActive = false;
-    finalScoreDisplay.textContent = `Score: ${Math.floor(state.score)}`;
-    gameOverScreen.classList.remove('hidden');
-    
-    // 死亡時パーティクル
-    createParticles(slime.x + slime.width/2, slime.y + slime.height/2, 20, '#32CD32');
-}
-
-function updateScore() {
-    scoreDisplay.textContent = `Score: ${Math.floor(state.score)}`;
+    state.active = false;
+    state.shake = 20; // 画面揺れMax
+    playSound('hit');
+    createParticles(slime.x + slime.w/2, slime.y + slime.h/2, 30, '#ff416c');
+    document.getElementById('finalScoreDisplay').textContent = `FINAL SCORE: ${Math.floor(state.score)}`;
+    setTimeout(() => { document.getElementById('gameOverScreen').classList.remove('hidden'); }, 500);
 }
 
 function update() {
-    if (!state.isActive) return;
+    if (!state.active) {
+        // ゲームオーバー時のパーティクルだけ更新
+        particles.forEach(p => p.update());
+        if(state.shake > 0) state.shake -= 1;
+        return;
+    }
 
     state.frames++;
-    
-    // スピードアップ (上限あり)
-    state.speedMultiplier = Math.min(2.5, 1.0 + (state.score / 1000));
+    state.speedMulti = Math.min(2.5, 1.0 + (state.score / 2000));
+    state.score += 0.2 * state.speedMulti;
+    document.getElementById('scoreDisplay').textContent = String(Math.floor(state.score)).padStart(5, '0');
 
-    // スライムの更新
     slime.update();
 
-    // 障害物の生成 (スピードが上がると生成間隔が少し短くなる)
-    let spawnRate = Math.max(60, 100 - (state.speedMultiplier * 10)); 
-    if (state.frames % Math.floor(spawnRate) === 0) {
+    if (state.frames % Math.floor(Math.max(40, 90 - state.speedMulti*10)) === 0) {
         obstacles.push(new Obstacle());
     }
 
-    // 雲の生成
-    if (state.frames % 150 === 0) {
-        backgroundObjects.push(new Cloud());
-    }
+    particles.forEach((p, i) => { p.update(); if (p.life <= 0) particles.splice(i, 1); });
 
-    // パーティクルの更新
-    for (let i = particles.length - 1; i >= 0; i--) {
-        particles[i].update();
-        if (particles[i].life <= 0) particles.splice(i, 1);
-    }
-    
-    // 雲の更新
-    for (let i = backgroundObjects.length - 1; i >= 0; i--) {
-        backgroundObjects[i].update();
-        if (backgroundObjects[i].x < -100) backgroundObjects.splice(i, 1);
-    }
-
-    // 障害物の更新と衝突判定
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-        let obs = obstacles[i];
+    obstacles.forEach((obs, i) => {
         obs.update();
-
-        // 画面外に出た障害物を削除
-        if (obs.x + obs.width < 0) {
-            obstacles.splice(i, 1);
-        } else {
-            // スコア加算
-            if (!obs.passed && slime.x > obs.x + obs.width) {
-                state.score += 10;
-                obs.passed = true;
-                updateScore();
-            }
-
-            // 当たり判定 (少し甘めに設定)
-            let hitboxMarginX = 5;
-            let hitboxMarginY = 5;
-            
-            if (
-                slime.x + hitboxMarginX < obs.x + obs.width &&
-                slime.x + slime.width - hitboxMarginX > obs.x &&
-                slime.y + hitboxMarginY < obs.y + obs.height &&
-                slime.y + slime.height - hitboxMarginY > obs.y - 15 // トゲの分
-            ) {
-                gameOver();
-            }
+        if (obs.x + obs.w < 0) obstacles.splice(i, 1);
+        
+        // 精密な当たり判定（AABB）
+        const margin = 8;
+        if (slime.x + margin < obs.x + obs.w && slime.x + slime.w - margin > obs.x &&
+            slime.y + margin < obs.y + obs.h && slime.y + slime.h - margin > obs.y) {
+            gameOver();
         }
+    });
+}
+
+function drawBackground() {
+    // 時間経過で空の色が変わるギミック
+    const skyHue = (220 + state.score * 0.05) % 360;
+    const grad = ctx.createLinearGradient(0, 0, 0, VIRTUAL_HEIGHT);
+    grad.addColorStop(0, `hsl(${skyHue}, 60%, 10%)`);
+    grad.addColorStop(1, `hsl(${skyHue}, 60%, 30%)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+
+    // デジタルグリッドの背景（パララックス）
+    ctx.strokeStyle = `hsla(${skyHue}, 100%, 50%, 0.2)`;
+    ctx.lineWidth = 2;
+    const offset = (state.frames * 2 * state.speedMulti) % 100;
+    for(let i = -100; i < VIRTUAL_WIDTH + 100; i += 100) {
+        ctx.beginPath(); ctx.moveTo(i - offset, 0); ctx.lineTo(i - offset - 200, VIRTUAL_HEIGHT); ctx.stroke();
     }
+
+    // 地面（サイバーデッキ風）
+    ctx.fillStyle = '#0f0f1b';
+    ctx.fillRect(0, GROUND_Y, VIRTUAL_WIDTH, VIRTUAL_HEIGHT - GROUND_Y);
+    ctx.fillStyle = '#ff416c';
+    ctx.fillRect(0, GROUND_Y, VIRTUAL_WIDTH, 4);
     
-    // 生存スコア (時間経過で微増)
-    state.score += 0.1 * state.speedMultiplier;
-    if(state.frames % 10 === 0) updateScore();
+    // スクロールする地面のライン
+    ctx.fillStyle = '#ff416c';
+    for(let i = 0; i < VIRTUAL_WIDTH; i += 80) {
+        ctx.fillRect(i - (state.frames * 8 * state.speedMulti)%80, GROUND_Y, 20, VIRTUAL_HEIGHT - GROUND_Y);
+    }
 }
 
 function draw() {
-    // クリア
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     ctx.save();
-    // 仮想サイズから実際のCanvasサイズへスケール
-    ctx.scale(scaleX, scaleY);
-
-    // 背景の雲
-    for (let cloud of backgroundObjects) {
-        cloud.draw(ctx);
+    
+    // スクリーンシェイク適用
+    if (state.shake > 0) {
+        const dx = (Math.random() - 0.5) * state.shake;
+        const dy = (Math.random() - 0.5) * state.shake;
+        ctx.translate(dx, dy);
     }
 
-    // 地面
-    ctx.fillStyle = '#8B4513';
-    ctx.fillRect(0, GROUND_Y, VIRTUAL_WIDTH, VIRTUAL_HEIGHT - GROUND_Y);
-    // 草
-    ctx.fillStyle = '#228B22';
-    ctx.fillRect(0, GROUND_Y, VIRTUAL_WIDTH, 15);
-    // 地面の模様
-    ctx.fillStyle = 'rgba(0,0,0,0.1)';
-    for(let i=0; i<VIRTUAL_WIDTH; i+=40) {
-        ctx.fillRect(i - (state.frames * 2 * state.speedMultiplier)%40, GROUND_Y + 20, 20, 5);
-    }
-
-    // 障害物
-    for (let obs of obstacles) {
-        obs.draw(ctx);
-    }
-
-    // スライム
-    if(state.isActive) slime.draw(ctx);
-
-    // パーティクル
-    for (let p of particles) {
-        p.draw(ctx);
-    }
+    drawBackground();
+    obstacles.forEach(o => o.draw(ctx));
+    if(state.active || state.shake > 0) slime.draw(ctx);
+    particles.forEach(p => p.draw(ctx));
 
     ctx.restore();
 }
@@ -586,37 +392,23 @@ function draw() {
 function gameLoop() {
     update();
     draw();
-    if (state.isActive) {
-        requestAnimationFrame(gameLoop);
-    } else {
-        // ゲームオーバー後も1回だけ描画してパーティクルなどを表示
-        draw();
-    }
+    requestAnimationFrame(gameLoop);
 }
 
-// 操作イベント
+// 入力ハンドリング
 function handleInput(e) {
-    if(e.type === 'touchstart') e.preventDefault(); // スクロール防止
-    
-    if (state.isActive) {
-        slime.jump();
-    }
+    if(e.type === 'touchstart') e.preventDefault();
+    if (state.active) slime.jump();
 }
-
-// 画面全体のどこを触ってもジャンプするように設定
 gameContainer.addEventListener('mousedown', handleInput);
 gameContainer.addEventListener('touchstart', handleInput, {passive: false});
+document.getElementById('startBtn').addEventListener('click', initGame);
+document.getElementById('restartBtn').addEventListener('click', initGame);
 
-startBtn.addEventListener('click', startGame);
-startBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); startGame(); }, {passive: false});
-
-restartBtn.addEventListener('click', startGame);
-restartBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); startGame(); }, {passive: false});
-
-// 初期化実行
-handleOrientation(); // 最初の向き設定
-initGame();
-draw(); // タイトル画面の後ろの背景を描画
+// 初期化
+handleOrientation();
+drawBackground(); // 初期背景描画
+requestAnimationFrame(gameLoop);
 
 </script>
 </body>
