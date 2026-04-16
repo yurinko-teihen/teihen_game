@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slime Jump Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+        }
+        #gameContainer {
+            position: relative;
+            background-color: #87CEEB;
+            border: 4px solid #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        canvas {
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            background: rgba(255,255,255,0.8);
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+            font-size: 40px;
+            z-index: 100;
+        }
+        #gameOverScreen h1 {
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        #gameOverScreen p {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        #gameOverScreen button {
+            padding: 10px 30px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        #gameOverScreen button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="600" height="400"></canvas>
+        <div id="ui">
+            <span id="timer">⏱️ Time: 30s</span> | <span id="score">⭐ Score: 0</span>
+        </div>
+        <div id="gameOverScreen">
+            <h1 id="result">Game Over!</h1>
+            <p id="finalScore">Score: 0</p>
+            <button onclick="location.reload()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const timerDisplay = document.getElementById('timer');
+        const scoreDisplay = document.getElementById('score');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const resultText = document.getElementById('result');
+        const finalScoreText = document.getElementById('finalScore');
+
+        // Game variables
+        let slime = {
+            x: 50,
+            y: 250,
+            width: 35,
+            height: 35,
+            velocityY: 0,
+            isJumping: false
+        };
+
+        let gravity = 0.5;
+        let jumpPower = 12;
+        let obstacles = [];
+        let timer = 30;
+        let score = 0;
+        let gameActive = true;
+        let gameStarted = false;
+
+        // Event listeners
+        document.addEventListener('click', handleJump);
+        document.addEventListener('touchstart', handleJump);
+
+        function handleJump() {
+            if (!slime.isJumping && gameActive) {
+                slime.velocityY = -jumpPower;
+                slime.isJumping = true;
+            }
+        }
+
+        function drawSlime() {
+            // Draw cute slime
+            ctx.fillStyle = '#90EE90';
+            ctx.beginPath();
+            ctx.arc(slime.x + slime.width / 2, slime.y + slime.height / 2, slime.width / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw eyes
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(slime.x + 12, slime.y + 10, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(slime.x + 23, slime.y + 10, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw mouth (smile)
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(slime.x + 17.5, slime.y + 18, 5, 0, Math.PI);
+            ctx.stroke();
+        }
+
+        function drawObstacle(obstacle) {
+            // Draw spike obstacle
+            ctx.fillStyle = '#FF6B6B';
+            ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            
+            // Draw spikes
+            ctx.fillStyle = '#FF4444';
+            for (let i = 0; i < obstacle.width; i += 10) {
+                ctx.beginPath();
+                ctx.moveTo(obstacle.x + i + 5, obstacle.y);
+                ctx.lineTo(obstacle.x + i + 10, obstacle.y - 8);
+                ctx.lineTo(obstacle.x + i, obstacle.y - 8);
+                ctx.fill();
+            }
+        }
+
+        function drawGround() {
+            ctx.fillStyle = '#8B7355';
+            ctx.fillRect(0, 330, canvas.width, 70);
+            
+            // Grass pattern
+            ctx.fillStyle = '#228B22';
+            for (let i = 0; i < canvas.width; i += 20) {
+                ctx.fillRect(i, 325, 15, 5);
+            }
+        }
+
+        function updateGame() {
+            if (!gameActive) return;
+
+            // Update slime physics
+            slime.velocityY += gravity;
+            slime.y += slime.velocityY;
+
+            // Ground collision
+            if (slime.y + slime.height >= 330) {
+                slime.y = 330 - slime.height;
+                slime.isJumping = false;
+                slime.velocityY = 0;
+            }
+
+            // Update obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].x -= 6;
+                
+                if (obstacles[i].x + obstacles[i].width < 0) {
+                    obstacles.splice(i, 1);
+                    score++;
+                    scoreDisplay.textContent = `⭐ Score: ${score}`;
+                }
+            }
+
+            // Check collisions
+            checkCollisions();
+
+            // Render
+            render();
+        }
+
+        function checkCollisions() {
+            for (let obstacle of obstacles) {
+                if (
+                    slime.x < obstacle.x + obstacle.width &&
+                    slime.x + slime.width > obstacle.x &&
+                    slime.y < obstacle.y + obstacle.height &&
+                    slime.y + slime.height > obstacle.y
+                ) {
+                    endGame();
+                }
+            }
+        }
+
+        function render() {
+            // Clear canvas with sky color
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw clouds
+            drawClouds();
+            
+            // Draw game elements
+            drawGround();
+            drawSlime();
+            
+            for (let obstacle of obstacles) {
+                drawObstacle(obstacle);
+            }
+        }
+
+        function drawClouds() {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.beginPath();
+            ctx.arc(100, 50, 20, 0, Math.PI * 2);
+            ctx.arc(130, 45, 25, 0, Math.PI * 2);
+            ctx.arc(160, 50, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(400, 80, 25, 0, Math.PI * 2);
+            ctx.arc(440, 75, 30, 0, Math.PI * 2);
+            ctx.arc(480, 80, 25, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function spawnObstacle() {
+            const height = Math.random() * 40 + 30;
+            obstacles.push({
+                x: canvas.width,
+                y: 330 - height,
+                width: 30,
+                height: height
+            });
+        }
+
+        function endGame() {
+            gameActive = false;
+            gameOverScreen.style.display = 'flex';
+            
+            if (timer > 0) {
+                resultText.textContent = '🎉 You Win!';
+                resultText.style.color = '#FFD700';
+            } else {
+                resultText.textContent = '💥 Game Over!';
+                resultText.style.color = '#FF6B6B';
+            }
+            
+            finalScoreText.textContent = `Score: ${score}`;
+        }
+
+        // Game loop
+        const gameLoop = setInterval(() => {
+            updateGame();
+        }, 1000 / 60);
+
+        // Timer
+        const timerInterval = setInterval(() => {
+            if (gameActive) {
+                timer--;
+                timerDisplay.textContent = `⏱️ Time: ${timer}s`;
+                
+                if (timer <= 0) {
+                    endGame();
+                }
+            }
+        }, 1000);
+
+        // Spawn obstacles
+        const spawnInterval = setInterval(() => {
+            if (gameActive) {
+                spawnObstacle();
+            }
+        }, 1200);
+
+        // Start game indication
+        render();
+    </script>
+</body>
+</html>
