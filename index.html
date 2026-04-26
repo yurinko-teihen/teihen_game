@@ -3,423 +3,749 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, maximum-scale=1.0">
-    <title>Gothic Dash: Crimson Moon</title>
+    <title>Gothic Puyo: Crimson Soul</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #050508; font-family: 'Cormorant Garamond', serif; touch-action: none; }
-        #gameContainer { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; transform-origin: top left; transition: transform 0.3s ease; }
+        #gameContainer { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; transform-origin: top left; }
         canvas { display: block; width: 100%; height: 100%; z-index: 1; }
-        
-        /* UI Layer */
-        #uiLayer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
-        .hud-box { font-family: 'Cinzel', serif; color: #b30000; font-size: clamp(16px, 4vw, 24px); text-shadow: 0 0 10px #ff0000, 2px 2px 0px #000; letter-spacing: 2px; }
-        #warningDisplay { color: #ff0000; opacity: 0; transition: opacity 0.1s; font-weight: bold; }
-        #warningDisplay.active { opacity: 1; animation: heartbeat 0.5s infinite alternate; }
-        @keyframes heartbeat { from { transform: scale(1); } to { transform: scale(1.1); } }
-        
-        /* Overlays - バグ修正: .hiddenはdisplay:noneで完全に消す */
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 10, 0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; backdrop-filter: blur(5px); }
+
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5,5,10,0.92); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; backdrop-filter: blur(5px); }
         .hidden { display: none !important; }
-        
-        .overlay h1 { font-family: 'Cinzel', serif; font-size: clamp(36px, 8vw, 70px); margin-bottom: 5px; color: #d4af37; text-shadow: 0 0 20px #b30000, 0 5px 5px #000; letter-spacing: 4px; text-align: center; }
-        .overlay p { font-size: clamp(18px, 4vw, 28px); margin-bottom: 40px; color: #888; font-style: italic; }
-        
-        /* 確実なボタン */
-        .action-button { padding: 15px 50px; font-size: clamp(20px, 5vw, 28px); font-family: 'Cinzel', serif; font-weight: bold; background: rgba(179, 0, 0, 0.1); color: #d4af37; border: 2px solid #b30000; border-radius: 4px; cursor: pointer; pointer-events: auto; box-shadow: 0 0 15px rgba(179, 0, 0, 0.4) inset, 0 5px 15px rgba(0,0,0,0.8); transition: all 0.2s; }
-        .action-button:active { background: #b30000; color: #fff; transform: translateY(4px); box-shadow: 0 0 5px rgba(179, 0, 0, 0.8); }
+        .overlay h1 { font-family: 'Cinzel', serif; font-size: clamp(32px,7vw,62px); margin-bottom: 8px; color: #d4af37; text-shadow: 0 0 20px #b30000, 0 5px 5px #000; letter-spacing: 4px; text-align: center; }
+        .overlay p  { font-size: clamp(15px,3.5vw,24px); margin-bottom: 8px; color: #888; font-style: italic; }
+        .overlay .hint { font-size: clamp(11px,2.2vw,16px); color: #555; margin-bottom: 4px; }
+        .action-button { margin-top: 22px; padding: 13px 48px; font-size: clamp(18px,4.5vw,26px); font-family: 'Cinzel', serif; font-weight: bold; background: rgba(179,0,0,0.1); color: #d4af37; border: 2px solid #b30000; border-radius: 4px; cursor: pointer; pointer-events: auto; box-shadow: 0 0 15px rgba(179,0,0,0.4) inset, 0 5px 15px rgba(0,0,0,0.8); transition: all 0.2s; }
+        .action-button:active { background: #b30000; color: #fff; transform: translateY(3px); }
+
+        /* タッチ操作ボタン */
+        #touchLayer { position: absolute; bottom: 0; left: 0; width: 100%; height: 38%; z-index: 15; display: flex; align-items: flex-end; justify-content: space-between; padding: 8px 12px; pointer-events: none; }
+        .touch-group { display: flex; gap: 8px; }
+        .touch-btn { padding: 10px 18px; font-size: 22px; background: rgba(120,0,0,0.25); color: #d4af37; border: 1px solid #661100; border-radius: 8px; cursor: pointer; pointer-events: auto; -webkit-tap-highlight-color: transparent; transition: background 0.1s; }
+        .touch-btn:active { background: rgba(179,0,0,0.6); }
     </style>
 </head>
 <body>
 
 <div id="gameContainer">
     <canvas id="gameCanvas"></canvas>
-    <div id="uiLayer">
-        <div style="display:flex; justify-content:space-between;">
-            <div class="hud-box" id="scoreDisplay">SOULS: 0</div>
-            <div class="hud-box" id="warningDisplay">DANGER</div>
+
+    <!-- タッチ操作ボタン（ゲーム中のみ表示） -->
+    <div id="touchLayer" class="hidden">
+        <div class="touch-group">
+            <button class="touch-btn" onpointerdown="btnAct('left')">◀</button>
+            <button class="touch-btn" onpointerdown="btnAct('rccw')">↺</button>
+        </div>
+        <button class="touch-btn" onpointerdown="btnAct('drop')" style="align-self:flex-end;">▼</button>
+        <div class="touch-group">
+            <button class="touch-btn" onpointerdown="btnAct('rcw')">↻</button>
+            <button class="touch-btn" onpointerdown="btnAct('right')">▶</button>
         </div>
     </div>
-    
+
     <div id="startScreen" class="overlay">
-        <h1>GOTHIC DASH</h1>
-        <p>Escape the Crimson Moon</p>
+        <h1>GOTHIC PUYO</h1>
+        <p>— Crimson Soul —</p>
+        <div class="hint">4つ以上つなげて魂を解放せよ</div>
+        <div class="hint">← → 移動 ｜ Z X 回転 ｜ ↓ 落下 ｜ Space ハードドロップ</div>
         <button class="action-button" onclick="startGame()">ENTER</button>
     </div>
 
     <div id="gameOverScreen" class="overlay hidden">
         <h1 style="color:#880000; text-shadow: 0 0 20px #ff0000;">PERISHED</h1>
-        <p id="finalScoreDisplay">Souls Collected: 0</p>
+        <p id="finalScoreDisplay">Souls: 0</p>
+        <p id="finalChainDisplay" style="font-size:clamp(13px,3vw,20px); color:#666; margin-bottom:4px;"></p>
         <button class="action-button" onclick="startGame()">RESURRECT</button>
     </div>
 </div>
 
 <script>
-/**
- * 1. 画面制御
- */
+// =====================================================
+// 1. 画面制御
+// =====================================================
 const gameContainer = document.getElementById('gameContainer');
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const VIRTUAL_WIDTH = 900;
-const VIRTUAL_HEIGHT = 450;
+const canvas        = document.getElementById('gameCanvas');
+const ctx           = canvas.getContext('2d');
+const VW = 900, VH = 450;
 let scaleRatio = 1;
 
 function handleOrientation() {
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-    if (width < height) {
-        gameContainer.style.width = height + 'px';
-        gameContainer.style.height = width + 'px';
-        gameContainer.style.transform = `rotate(90deg) translateY(-${width}px)`;
-        resizeCanvas(height, width);
+    let w = window.innerWidth, h = window.innerHeight;
+    if (w < h) {
+        gameContainer.style.width  = h + 'px';
+        gameContainer.style.height = w + 'px';
+        gameContainer.style.transform = `rotate(90deg) translateY(-${w}px)`;
+        resizeCanvas(h, w);
     } else {
-        gameContainer.style.width = width + 'px';
-        gameContainer.style.height = height + 'px';
+        gameContainer.style.width  = w + 'px';
+        gameContainer.style.height = h + 'px';
         gameContainer.style.transform = 'none';
-        resizeCanvas(width, height);
+        resizeCanvas(w, h);
     }
 }
-
 function resizeCanvas(w, h) {
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = w * dpr;
+    canvas.width  = w * dpr;
     canvas.height = h * dpr;
-    scaleRatio = Math.min(w / VIRTUAL_WIDTH, h / VIRTUAL_HEIGHT);
+    scaleRatio = Math.min(w / VW, h / VH);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
-    ctx.translate((w - VIRTUAL_WIDTH * scaleRatio) / 2, (h - VIRTUAL_HEIGHT * scaleRatio) / 2);
+    ctx.translate((w - VW * scaleRatio) / 2, (h - VH * scaleRatio) / 2);
     ctx.scale(scaleRatio, scaleRatio);
 }
 window.addEventListener('resize', handleOrientation);
 window.addEventListener('orientationchange', handleOrientation);
 
-/**
- * 2. ゲームロジック
- */
-const GRAVITY = 0.7;
-const GROUND_Y = VIRTUAL_HEIGHT - 40;
-const JUMP_POWER = -12;
+// =====================================================
+// 2. ゲーム定数
+// =====================================================
+const COLS      = 6;
+const ROWS      = 14;   // 2行隠し + 12行表示
+const VIS       = 12;   // 表示行数
+const CELL      = 35;
+const SPAWN_COL = 2;
+const BX = Math.floor((VW - COLS * CELL) / 2); // 345
+const BY = Math.floor((VH - VIS  * CELL) / 2); // 15
 
-// ★ 新キャラ：ゴスロリ少女
-class GothLoli {
-    constructor() {
-        this.w = 40; this.h = 60;
-        this.x = 100; this.y = GROUND_Y - this.h;
-        this.vy = 0; this.jumpCount = 0;
+// 魂の色: null=空, 1=紅, 2=蒼, 3=緑, 4=金
+const COLORS = [null, '#dd2222', '#2244cc', '#22aa44', '#ddaa00'];
+const GLOWS  = [null, '#ff5555', '#4488ff', '#44ee66', '#ffdd33'];
+const DARKS  = [null, '#881111', '#112288', '#116633', '#886600'];
+const LIGHTS = [null, '#ffaaaa', '#aabbff', '#aaffcc', '#ffeeaa'];
+
+// サテライトのオフセット [dc, dr]: 上/右/下/左
+const SAT_OFF = [[0,-1],[1,0],[0,1],[-1,0]];
+
+const FALL_BASE  = 48;  // 自動落下フレーム間隔
+const LOCK_DLY   = 28;  // ロック遅延フレーム
+const CLEAR_DUR  = 44;  // 消去アニメフレーム
+const DAS_DELAY  = 11;  // DASまでのフレーム
+const ARR_RATE   = 3;   // ARR繰り返し間隔
+
+// =====================================================
+// 3. ゲーム状態
+// =====================================================
+let grid, piece, nextPair;
+// gPhase: 'falling' | 'clearing' | 'gameover'
+let gPhase, gTimer;
+let fallT, lockT, isLocking;
+let clearCells;
+let chain, score, maxChain, level;
+let softDrop, leftH, rightH, dasT;
+let inputQ;
+let gameActive, animId, gFrames;
+
+function randColor() { return Math.floor(Math.random() * 4) + 1; }
+
+function satPos(p) {
+    const [dc, dr] = SAT_OFF[p.rot];
+    return { c: p.mc + dc, r: p.mr + dr };
+}
+function cellFree(c, r) {
+    if (c < 0 || c >= COLS || r >= ROWS) return false;
+    if (r < 0) return true; // 盤外上方は許可
+    return grid[r][c] === 0;
+}
+function pieceOK(mc, mr, rot) {
+    const [dc, dr] = SAT_OFF[rot];
+    return cellFree(mc, mr) && cellFree(mc + dc, mr + dr);
+}
+
+// =====================================================
+// 4. ピース操作
+// =====================================================
+function spawnPiece() {
+    const [mc, sc] = nextPair;
+    nextPair = [randColor(), randColor()];
+    piece = { mc: SPAWN_COL, mr: 1, mainCol: mc, satCol: sc, rot: 0 };
+    // rot=0: サテライトは行0(上), メインは行1
+    return cellFree(piece.mc, piece.mr);
+}
+
+function tryMoveH(dc) {
+    if (pieceOK(piece.mc + dc, piece.mr, piece.rot)) {
+        piece.mc += dc;
+        if (isLocking) lockT = 0; // ロック延長
     }
-    jump() {
-        if (this.jumpCount < 2) {
-            this.vy = JUMP_POWER;
-            this.jumpCount++;
-            createParticles(this.x + this.w/2, this.y + this.h, 15, '#b30000');
+}
+
+function tryRotate(dir) { // +1=時計回り, -1=反時計回り
+    const newRot = ((piece.rot + dir) % 4 + 4) % 4;
+    if (pieceOK(piece.mc, piece.mr, newRot)) {
+        piece.rot = newRot;
+    } else {
+        // 壁蹴り: ±1列試みる
+        let kicked = false;
+        for (const k of [-1, 1]) {
+            if (pieceOK(piece.mc + k, piece.mr, newRot)) {
+                piece.mc += k;
+                piece.rot = newRot;
+                kicked = true;
+                break;
+            }
+        }
+        // タック: サテライトが下(rot=2)でブロックされた場合、上に1行ずらす
+        if (!kicked && piece.rot === 2) {
+            if (pieceOK(piece.mc, piece.mr - 1, newRot)) {
+                piece.mr--;
+                piece.rot = newRot;
+            }
         }
     }
-    update() {
-        this.vy += GRAVITY;
-        this.y += this.vy;
-        if (this.y + this.h >= GROUND_Y) {
-            this.y = GROUND_Y - this.h;
-            this.vy = 0; this.jumpCount = 0;
+    if (isLocking) lockT = 0;
+}
+
+function tryFall() {
+    if (pieceOK(piece.mc, piece.mr + 1, piece.rot)) {
+        piece.mr++;
+        return true;
+    }
+    return false;
+}
+
+function hardDrop() {
+    while (tryFall()) {}
+    isLocking = true;
+    lockT = LOCK_DLY;
+}
+
+function lockPiece() {
+    const s = satPos(piece);
+    if (piece.mr >= 0 && piece.mr < ROWS) grid[piece.mr][piece.mc] = piece.mainCol;
+    if (s.r >= 0 && s.r < ROWS)           grid[s.r][s.c]           = piece.satCol;
+}
+
+// =====================================================
+// 5. 消去ロジック
+// =====================================================
+function findGroups() {
+    const vis = Array.from({ length: ROWS }, () => new Array(COLS).fill(false));
+    const result = [];
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            if (grid[r][c] > 0 && !vis[r][c]) {
+                const color = grid[r][c];
+                const group = [];
+                const q = [[r, c]];
+                while (q.length) {
+                    const [cr, cc] = q.pop();
+                    if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS) continue;
+                    if (vis[cr][cc] || grid[cr][cc] !== color) continue;
+                    vis[cr][cc] = true;
+                    group.push([cr, cc]);
+                    q.push([cr-1,cc],[cr+1,cc],[cr,cc-1],[cr,cc+1]);
+                }
+                if (group.length >= 4) result.push(...group);
+            }
         }
     }
-    draw(ctx) {
-        // 走りアニメーション（上下の揺れ）
-        let bobbing = (this.vy === 0 && state.active) ? Math.sin(state.frames * 0.4) * 3 : 0;
-        let hairSway = (this.vy !== 0) ? 15 : Math.sin(state.frames * 0.2) * 5; // ジャンプ中は髪が上に
+    return result;
+}
 
+function applyGravity() {
+    for (let c = 0; c < COLS; c++) {
+        let wr = ROWS - 1;
+        for (let r = ROWS - 1; r >= 0; r--) {
+            if (grid[r][c] !== 0) {
+                grid[wr][c] = grid[r][c];
+                if (wr !== r) grid[r][c] = 0;
+                wr--;
+            }
+        }
+    }
+}
+
+function calcScore(numCleared, chainNum) {
+    const chainBonus = [0, 0, 8, 16, 32, 64, 96, 128, 160];
+    const idx = Math.min(chainNum, chainBonus.length - 1);
+    return numCleared * 10 * (1 + chainBonus[idx]);
+}
+
+function afterLock() {
+    clearCells = findGroups();
+    if (clearCells.length > 0) {
+        score += calcScore(clearCells.length, chain);
+        gPhase = 'clearing';
+        gTimer = 0;
+    } else {
+        chain = 0;
+        if (!spawnPiece()) {
+            doGameOver();
+        } else {
+            gPhase = 'falling';
+            fallT = 0; isLocking = false; lockT = 0;
+        }
+    }
+}
+
+// =====================================================
+// 6. メイン更新
+// =====================================================
+function update() {
+    if (gPhase === 'gameover') return;
+    gTimer++;
+
+    if (gPhase === 'falling') {
+        // 横移動 (DAS/ARR)
+        if (leftH || rightH) {
+            dasT++;
+            if (dasT >= DAS_DELAY && (dasT - DAS_DELAY) % ARR_RATE === 0) {
+                if (leftH && !rightH) tryMoveH(-1);
+                if (rightH && !leftH) tryMoveH(1);
+            }
+        }
+
+        // 入力キュー処理（回転・ハードドロップ）
+        while (inputQ.length > 0) {
+            const a = inputQ.shift();
+            if (a === 'rcw')  tryRotate(1);
+            if (a === 'rccw') tryRotate(-1);
+            if (a === 'drop') hardDrop();
+        }
+
+        // 自動落下
+        const fallDelay = softDrop ? 3 : Math.max(8, FALL_BASE - level * 2);
+        if (fallT >= fallDelay) {
+            fallT = 0;
+            if (!tryFall()) isLocking = true;
+        } else {
+            fallT++;
+        }
+
+        // ロック処理
+        if (isLocking) {
+            if (tryFall()) {
+                isLocking = false; lockT = 0;
+            } else {
+                lockT++;
+                if (lockT >= LOCK_DLY) {
+                    lockPiece();
+                    chain = 0;
+                    afterLock();
+                }
+            }
+        }
+
+    } else if (gPhase === 'clearing') {
+        if (gTimer >= CLEAR_DUR) {
+            // 消去セルを削除
+            for (const [r, c] of clearCells) grid[r][c] = 0;
+            applyGravity();
+            chain++;
+            if (chain > maxChain) maxChain = chain;
+
+            // 連鎖チェック
+            clearCells = findGroups();
+            if (clearCells.length > 0) {
+                score += calcScore(clearCells.length, chain);
+                gTimer = 0; // 続けてアニメ
+            } else {
+                chain = 0;
+                if (!spawnPiece()) {
+                    doGameOver();
+                } else {
+                    gPhase = 'falling';
+                    fallT = 0; isLocking = false; lockT = 0;
+                }
+            }
+        }
+    }
+
+    level = Math.min(20, 1 + Math.floor(score / 800));
+    gFrames++;
+}
+
+// =====================================================
+// 7. 描画
+// =====================================================
+function drawBackground() {
+    ctx.fillStyle = '#07050e';
+    ctx.fillRect(0, 0, VW, VH);
+
+    // 赤い月
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(760, 90, 55, 0, Math.PI * 2);
+    const mg = ctx.createRadialGradient(760, 90, 10, 760, 90, 55);
+    mg.addColorStop(0, '#cc1111');
+    mg.addColorStop(1, '#440000');
+    ctx.fillStyle = mg;
+    ctx.shadowBlur = 35; ctx.shadowColor = '#ff0000';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // 血の雨
+    ctx.strokeStyle = 'rgba(140,0,0,0.22)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 18; i++) {
+        const rx = ((i * 53 + gFrames * 3) % (VW + 20)) - 10;
+        const ry = ((i * 79 + gFrames * 8) % VH);
+        ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 3, ry + 10); ctx.stroke();
+    }
+}
+
+function getConns(r, c) {
+    const col = grid[r][c];
+    if (!col) return null;
+    return {
+        T: r > 0      && grid[r-1][c] === col,
+        B: r < ROWS-1 && grid[r+1][c] === col,
+        L: c > 0      && grid[r][c-1] === col,
+        R: c < COLS-1 && grid[r][c+1] === col,
+    };
+}
+
+function drawSoul(px, py, colorIdx, alpha, conns) {
+    const r  = CELL / 2 - 2;
+    const cx = px + CELL / 2;
+    const cy = py + CELL / 2;
+    ctx.globalAlpha = alpha;
+
+    // 接続ブリッジ
+    if (conns) {
+        ctx.fillStyle = COLORS[colorIdx];
+        const b = r * 0.72;
+        if (conns.T) ctx.fillRect(cx - b, cy - r, b * 2, r + 1);
+        if (conns.B) ctx.fillRect(cx - b, cy - 1, b * 2, r + 1);
+        if (conns.L) ctx.fillRect(cx - r, cy - b, r + 1, b * 2);
+        if (conns.R) ctx.fillRect(cx - 1, cy - b, r + 1, b * 2);
+    }
+
+    // メイン球体
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    const grad = ctx.createRadialGradient(cx - r * 0.28, cy - r * 0.28, r * 0.08, cx, cy, r);
+    grad.addColorStop(0, LIGHTS[colorIdx]);
+    grad.addColorStop(0.55, COLORS[colorIdx]);
+    grad.addColorStop(1, DARKS[colorIdx]);
+    ctx.fillStyle = grad;
+    ctx.shadowBlur = 6; ctx.shadowColor = GLOWS[colorIdx];
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 目
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath();
+    ctx.arc(cx + r * 0.22, cy - r * 0.12, r * 0.26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(cx + r * 0.26, cy - r * 0.08, r * 0.13, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+}
+
+function drawBoard() {
+    // 盤面背景
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    ctx.fillRect(BX - 3, BY - 3, COLS * CELL + 6, VIS * CELL + 6);
+    ctx.strokeStyle = '#330d1a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(BX - 3, BY - 3, COLS * CELL + 6, VIS * CELL + 6);
+
+    // グリッド線
+    ctx.strokeStyle = 'rgba(50,15,30,0.55)';
+    ctx.lineWidth = 0.5;
+    for (let c = 1; c < COLS; c++) {
+        ctx.beginPath();
+        ctx.moveTo(BX + c * CELL, BY);
+        ctx.lineTo(BX + c * CELL, BY + VIS * CELL);
+        ctx.stroke();
+    }
+    for (let r = 1; r < VIS; r++) {
+        ctx.beginPath();
+        ctx.moveTo(BX, BY + r * CELL);
+        ctx.lineTo(BX + COLS * CELL, BY + r * CELL);
+        ctx.stroke();
+    }
+
+    // 消去アニメ用点滅判定
+    const blinkOn = (gPhase !== 'clearing') || (Math.floor(gTimer / 5) % 2 === 0);
+    const clearSet = new Set((clearCells || []).map(([r, c]) => `${r},${c}`));
+
+    // 格子内の魂を描画 (row 2〜ROWS-1 が表示行)
+    for (let r = 2; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            const col = grid[r][c];
+            if (!col) continue;
+            const isClear = clearSet.has(`${r},${c}`);
+            if (isClear && !blinkOn) continue;
+            const px = BX + c * CELL;
+            const py = BY + (r - 2) * CELL;
+            const alpha = isClear ? (1 - (gTimer / CLEAR_DUR) * 0.5) : 1;
+            drawSoul(px, py, col, alpha, getConns(r, c));
+        }
+    }
+}
+
+function drawFallingPiece() {
+    if (!piece) return;
+    const s = satPos(piece);
+
+    // ゴーストピース（落下先）
+    let ghostR = piece.mr;
+    while (pieceOK(piece.mc, ghostR + 1, piece.rot)) ghostR++;
+    const dr = ghostR - piece.mr;
+    if (dr > 0) {
+        ctx.globalAlpha = 0.22;
+        for (const { mc, mr, col } of [
+            { mc: piece.mc, mr: piece.mr + dr, col: piece.mainCol },
+            { mc: s.c,      mr: s.r + dr,      col: piece.satCol  },
+        ]) {
+            if (mr >= 2) {
+                ctx.beginPath();
+                ctx.arc(BX + mc * CELL + CELL/2, BY + (mr-2) * CELL + CELL/2, CELL/2 - 3, 0, Math.PI*2);
+                ctx.fillStyle = COLORS[col];
+                ctx.fill();
+            }
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    // メイン
+    if (piece.mr >= 2) {
+        // 落下中ピースの2個間の接続
+        const sameColor = (piece.mainCol === piece.satCol);
+        const mainConns = {
+            T: sameColor && s.r === piece.mr - 1 && s.c === piece.mc,
+            B: sameColor && s.r === piece.mr + 1 && s.c === piece.mc,
+            L: sameColor && s.c === piece.mc - 1 && s.r === piece.mr,
+            R: sameColor && s.c === piece.mc + 1 && s.r === piece.mr,
+        };
+        drawSoul(BX + piece.mc * CELL, BY + (piece.mr - 2) * CELL, piece.mainCol, 1, mainConns);
+    }
+    // サテライト
+    if (s.r >= 2) {
+        const sameColor = (piece.mainCol === piece.satCol);
+        const satConns = {
+            T: sameColor && piece.mr === s.r - 1 && piece.mc === s.c,
+            B: sameColor && piece.mr === s.r + 1 && piece.mc === s.c,
+            L: sameColor && piece.mc === s.c - 1 && piece.mr === s.r,
+            R: sameColor && piece.mc === s.c + 1 && piece.mr === s.r,
+        };
+        drawSoul(BX + s.c * CELL, BY + (s.r - 2) * CELL, piece.satCol, 1, satConns);
+    }
+}
+
+function drawNextPanel() {
+    const nx = BX + COLS * CELL + 22;
+    const ny = BY + 8;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(nx, ny, 88, 110);
+    ctx.strokeStyle = '#441122';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(nx, ny, 88, 110);
+
+    ctx.fillStyle = '#664422';
+    ctx.font = 'bold 12px Cinzel, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('NEXT', nx + 44, ny + 18);
+
+    // サテライト(上)→メイン(下) の順で表示
+    drawSoul(nx + 27, ny + 22, nextPair[1], 1, null);
+    drawSoul(nx + 27, ny + 22 + CELL, nextPair[0], 1, null);
+}
+
+function drawHUD() {
+    const lx = 20;
+
+    ctx.textAlign = 'left';
+    ctx.shadowBlur = 8; ctx.shadowColor = '#ff0000';
+
+    ctx.fillStyle = '#8a0000';
+    ctx.font = 'bold 13px Cinzel, serif';
+    ctx.fillText('SOULS', lx, BY + 26);
+
+    ctx.fillStyle = '#cc3333';
+    ctx.font = 'bold 26px Cinzel, serif';
+    ctx.fillText(`${score}`, lx, BY + 56);
+
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = '#4a2211';
+    ctx.font = '13px Cinzel, serif';
+    ctx.fillText(`LEVEL ${level}`, lx, BY + 80);
+
+    if (maxChain > 0) {
+        ctx.fillStyle = '#553311';
+        ctx.font = '12px Cinzel, serif';
+        ctx.fillText(`MAX ×${maxChain}`, lx, BY + 98);
+    }
+
+    // 連鎖表示
+    if (chain > 0 && gPhase === 'clearing') {
         ctx.save();
-        ctx.translate(this.x + this.w/2, this.y + this.h + bobbing);
-
-        // --- 奥のツインテール ---
-        ctx.fillStyle = '#0a0a0a';
-        ctx.beginPath();
-        ctx.ellipse(-8, -45 - hairSway/2, 10, 25, (30 + hairSway) * Math.PI/180, 0, Math.PI*2);
-        ctx.fill();
-
-        // --- ドレス（黒） ---
-        ctx.fillStyle = '#111';
-        ctx.beginPath();
-        ctx.moveTo(0, -50); // 首元
-        ctx.lineTo(-20, -10); // スカート左
-        ctx.bezierCurveTo(-10, -5, 10, -5, 20, -10); // スカート裾アーチ
-        ctx.lineTo(5, -50); // 右肩
-        ctx.fill();
-
-        // --- ドレスのフリル（白） ---
-        ctx.fillStyle = '#ddd';
-        for(let i = -15; i <= 15; i += 8) {
-            ctx.beginPath();
-            ctx.arc(i, -10, 4, 0, Math.PI);
-            ctx.fill();
-        }
-
-        // --- 脚と靴 ---
-        ctx.fillStyle = '#ffe0d0'; // 肌色
-        ctx.fillRect(-8, -10, 4, 10);
-        ctx.fillRect(4, -10, 4, 10);
-        ctx.fillStyle = '#111'; // 黒い靴
-        ctx.fillRect(-10, -3, 6, 4);
-        ctx.fillRect(4, -3, 6, 4);
-
-        // --- 頭/顔 ---
-        ctx.fillStyle = '#ffe0d0';
-        ctx.beginPath();
-        ctx.arc(0, -50, 14, 0, Math.PI*2);
-        ctx.fill();
-
-        // --- 手前のツインテールと前髪 ---
-        ctx.fillStyle = '#0a0a0a';
-        // 前髪
-        ctx.beginPath();
-        ctx.arc(0, -52, 15, Math.PI, 0);
-        ctx.fill();
-        ctx.fillRect(-14, -52, 28, 8); // パッツン前髪
-        
-        // 手前ツインテール
-        ctx.beginPath();
-        ctx.ellipse(5, -45 - hairSway/2, 10, 25, (-20 - hairSway) * Math.PI/180, 0, Math.PI*2);
-        ctx.fill();
-
-        // --- ヘッドドレス（白いレース） ---
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.ellipse(0, -64, 12, 4, 0, 0, Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle = '#b30000'; // 赤いリボン
-        ctx.fillRect(-3, -66, 6, 6);
-
-        // --- 瞳（紅い目、右向き） ---
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(6, -48, 4, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#b30000';
-        ctx.beginPath(); ctx.arc(7, -48, 2, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#000';
-        ctx.beginPath(); ctx.arc(7.5, -48, 1, 0, Math.PI*2); ctx.fill();
-
+        const pulse = 1 + Math.sin(gTimer * 0.3) * 0.08;
+        ctx.translate(lx + 40, BY + 145);
+        ctx.scale(pulse, pulse);
+        ctx.fillStyle = '#ddaa00';
+        ctx.shadowBlur = 14; ctx.shadowColor = '#ffdd00';
+        ctx.font = 'bold 20px Cinzel, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`×${chain}`, 0, 0);
+        ctx.font = '11px Cinzel, serif';
+        ctx.fillStyle = '#aa8800';
+        ctx.shadowBlur = 0;
+        ctx.fillText('CHAIN', 0, 16);
         ctx.restore();
     }
+
+    ctx.textAlign = 'left';
 }
 
-// ★ 障害物：墓石
-class Tombstone {
-    constructor(speed) {
-        this.w = 30 + Math.random() * 20;
-        this.h = 40 + Math.random() * 30;
-        this.x = VIRTUAL_WIDTH + 50;
-        this.y = GROUND_Y - this.h;
-        this.speed = speed;
-    }
-    update() { this.x -= 6 * this.speed; }
-    draw(ctx) {
-        ctx.fillStyle = '#2a2a30';
-        ctx.strokeStyle = '#111';
-        ctx.lineWidth = 2;
-        
-        // 墓石の形（上部が丸い）
-        ctx.beginPath();
-        ctx.moveTo(this.x, this.y + this.h);
-        ctx.lineTo(this.x, this.y + 15);
-        ctx.arc(this.x + this.w/2, this.y + 15, this.w/2, Math.PI, 0);
-        ctx.lineTo(this.x + this.w, this.y + this.h);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+function drawGothLoli() {
+    // スタート画面用のキャラクターをHUDの下に小さく飾る
+    const cx = 65, cy = BY + VIS * CELL - 10;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(0.58, 0.58);
 
-        // 墓石の十字架
-        ctx.fillStyle = '#111';
-        let cx = this.x + this.w/2;
-        let cy = this.y + 25;
-        ctx.fillRect(cx - 2, cy - 10, 4, 20);
-        ctx.fillRect(cx - 8, cy - 2, 16, 4);
+    ctx.fillStyle = '#0a0a0a';
+    ctx.beginPath();
+    ctx.ellipse(-8, -47, 9, 22, 0.5, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.moveTo(0,-50); ctx.lineTo(-18,-10);
+    ctx.bezierCurveTo(-9,-5,9,-5,18,-10);
+    ctx.lineTo(4,-50); ctx.fill();
+
+    ctx.fillStyle = '#ddd';
+    for (let i = -14; i <= 14; i += 7) {
+        ctx.beginPath(); ctx.arc(i,-10,3.5,0,Math.PI); ctx.fill();
     }
+
+    ctx.fillStyle = '#ffe0d0';
+    ctx.fillRect(-7,-10,3,9); ctx.fillRect(4,-10,3,9);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(-9,-3,5,4); ctx.fillRect(4,-3,5,4);
+
+    ctx.fillStyle = '#ffe0d0';
+    ctx.beginPath(); ctx.arc(0,-50,13,0,Math.PI*2); ctx.fill();
+
+    ctx.fillStyle = '#0a0a0a';
+    ctx.beginPath(); ctx.arc(0,-52,14,Math.PI,0); ctx.fill();
+    ctx.fillRect(-13,-52,26,7);
+    ctx.beginPath();
+    ctx.ellipse(4,-47,9,22,-0.3,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(0,-64,11,4,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#b30000';
+    ctx.fillRect(-3,-66,6,6);
+
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(5,-48,4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#b30000';
+    ctx.beginPath(); ctx.arc(6,-48,2,0,Math.PI*2); ctx.fill();
+    ctx.restore();
 }
 
-// 魔法陣パーティクル
-class Particle {
-    constructor(x, y, color) {
-        this.x = x; this.y = y;
-        this.vx = (Math.random() - 0.5) * 6;
-        this.vy = (Math.random() - 1) * 6;
-        this.life = 1.0; this.color = color;
-        this.size = Math.random() * 3 + 1;
-    }
-    update() {
-        this.x += this.vx; this.y += this.vy;
-        this.life -= 0.04;
-    }
-    draw(ctx) {
-        ctx.globalAlpha = Math.max(0, this.life);
-        ctx.fillStyle = this.color;
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
-        ctx.globalAlpha = 1.0;
-    }
-}
+// =====================================================
+// 8. 入力処理
+// =====================================================
+inputQ = [];
 
-/**
- * 3. メインシステム
- */
-let state = { active: false, score: 0, speedMulti: 1.0, frames: 0 };
-let player, obstacles, particles;
-let animId;
+window.addEventListener('keydown', e => {
+    if (!gameActive) return;
+    switch (e.key) {
+        case 'ArrowLeft':  if (!leftH)  { leftH  = true; dasT = 0; tryMoveH(-1); } break;
+        case 'ArrowRight': if (!rightH) { rightH = true; dasT = 0; tryMoveH(1); }  break;
+        case 'ArrowDown':  softDrop = true; break;
+        case 'ArrowUp': case 'x': case 'X': inputQ.push('rcw');  break;
+        case 'z': case 'Z':                 inputQ.push('rccw'); break;
+        case ' ':                           inputQ.push('drop'); break;
+    }
+    e.preventDefault();
+});
+window.addEventListener('keyup', e => {
+    if (e.key === 'ArrowLeft')  { leftH  = false; if (!rightH) dasT = 0; }
+    if (e.key === 'ArrowRight') { rightH = false; if (!leftH)  dasT = 0; }
+    if (e.key === 'ArrowDown')  softDrop = false;
+});
 
-function createParticles(x, y, count, color) {
-    for (let i = 0; i < count; i++) particles.push(new Particle(x, y, color));
-}
+// タッチボタン
+window.btnAct = function(action) {
+    if (!gameActive || gPhase !== 'falling') return;
+    if (action === 'left')  tryMoveH(-1);
+    if (action === 'right') tryMoveH(1);
+    if (action === 'rcw')   inputQ.push('rcw');
+    if (action === 'rccw')  inputQ.push('rccw');
+    if (action === 'drop')  inputQ.push('drop');
+};
 
-// ★ 確実なスタート関数
+// =====================================================
+// 9. ゲームループ
+// =====================================================
 window.startGame = function() {
-    player = new GothLoli();
-    obstacles = []; particles = [];
-    state = { active: true, score: 0, speedMulti: 1.0, frames: 0 };
-    
-    // UIを隠す（display:noneにする）
+    grid     = Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
+    nextPair = [randColor(), randColor()];
+    score    = 0; maxChain = 0; chain = 0; level = 1;
+    gFrames  = 0; gTimer   = 0;
+    fallT    = 0; lockT    = 0; isLocking = false;
+    softDrop = false; leftH = false; rightH = false; dasT = 0;
+    clearCells = []; inputQ = [];
+
+    spawnPiece();
+    gPhase = 'falling';
+
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('gameOverScreen').classList.add('hidden');
-    document.getElementById('warningDisplay').classList.remove('active');
-    
-    // 多重ループ防止
-    if(animId) cancelAnimationFrame(animId);
+    document.getElementById('touchLayer').classList.remove('hidden');
+    gameActive = true;
+
+    if (animId) cancelAnimationFrame(animId);
     gameLoop();
 };
 
-function gameOver() {
-    state.active = false;
-    document.getElementById('warningDisplay').classList.remove('active');
-    document.getElementById('finalScoreDisplay').textContent = `Souls Collected: ${Math.floor(state.score)}`;
+function doGameOver() {
+    gPhase = 'gameover';
+    gameActive = false;
+    document.getElementById('touchLayer').classList.add('hidden');
+    document.getElementById('finalScoreDisplay').textContent = `Souls: ${score}`;
+    document.getElementById('finalChainDisplay').textContent =
+        maxChain > 0 ? `Max Chain: ×${maxChain}` : '';
     document.getElementById('gameOverScreen').classList.remove('hidden');
-    createParticles(player.x + player.w/2, player.y + player.h/2, 40, '#880000');
-}
-
-// 魔眼センサーと軌道
-function drawMagicSensor(ctx, player, obstacles) {
-    let nearest = obstacles.find(o => o.x > player.x);
-    if (!nearest) return;
-
-    let dist = nearest.x - (player.x + player.w);
-    let isWarning = dist < 200;
-
-    // 魔力軌道（ジャンプ予測線）
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(179, 0, 0, 0.3)';
-    ctx.setLineDash([4, 6]);
-    ctx.lineWidth = 2;
-    let simX = player.x + player.w/2;
-    let simY = player.y + player.h;
-    let simVy = player.vy === 0 ? JUMP_POWER : player.vy;
-    ctx.moveTo(simX, simY);
-    for(let i=0; i<30; i++) {
-        simX += 6 * state.speedMulti;
-        simVy += GRAVITY; simY += simVy;
-        if(simY >= GROUND_Y) { ctx.lineTo(simX, GROUND_Y); break; }
-        ctx.lineTo(simX, simY);
-    }
-    ctx.stroke(); ctx.setLineDash([]);
-
-    // 魔眼レーザー
-    if (isWarning && player.y + player.h >= nearest.y) {
-        ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(player.x + player.w, player.y + player.h/2 - 10); // 目線から
-        ctx.lineTo(nearest.x, player.y + player.h/2 - 10);
-        ctx.stroke();
-        document.getElementById('warningDisplay').classList.add('active');
-    } else {
-        document.getElementById('warningDisplay').classList.remove('active');
-    }
-}
-
-function update() {
-    if (!state.active) return;
-    state.frames++;
-    state.speedMulti = Math.min(2.5, 1.0 + (state.score / 1000));
-    state.score += 0.1 * state.speedMulti;
-    
-    document.getElementById('scoreDisplay').textContent = `SOULS: ${Math.floor(state.score)}`;
-
-    player.update();
-    particles.forEach((p, i) => { p.update(); if (p.life <= 0) particles.splice(i, 1); });
-
-    if (state.frames % Math.floor(Math.max(40, 90 - state.speedMulti*15)) === 0) {
-        obstacles.push(new Tombstone(state.speedMulti));
-    }
-
-    obstacles.forEach((obs, i) => {
-        obs.update();
-        if (obs.x + obs.w < 0) obstacles.splice(i, 1);
-        
-        let hitbox = 8; // スカートの分、当たり判定を少し甘めに
-        if (player.x + hitbox < obs.x + obs.w && player.x + player.w - hitbox > obs.x &&
-            player.y + hitbox < obs.y + obs.h && player.y + player.h > obs.y) {
-            gameOver();
-        }
-    });
-}
-
-function drawBackground() {
-    // 漆黒の空
-    ctx.fillStyle = '#08050e';
-    ctx.fillRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
-    
-    // 赤い月（パララックス）
-    let moonX = 600 - (state.frames * 0.5) % 1500;
-    ctx.beginPath();
-    ctx.arc(moonX, 150, 80, 0, Math.PI*2);
-    ctx.fillStyle = '#b30000';
-    ctx.shadowBlur = 40; ctx.shadowColor = '#ff0000';
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    
-    // 赤い雨（血の雨）
-    ctx.strokeStyle = 'rgba(179, 0, 0, 0.4)';
-    ctx.lineWidth = 1;
-    for(let i=0; i<30; i++) {
-        let rx = (Math.random() * VIRTUAL_WIDTH * 2) - (state.frames * 10) % (VIRTUAL_WIDTH*2);
-        let ry = (Math.random() * VIRTUAL_HEIGHT + state.frames * 15) % VIRTUAL_HEIGHT;
-        ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + 15); ctx.stroke();
-    }
-
-    // 地面（霧と黒土）
-    ctx.fillStyle = '#111';
-    ctx.fillRect(0, GROUND_Y, VIRTUAL_WIDTH, VIRTUAL_HEIGHT - GROUND_Y);
-    ctx.fillStyle = '#222';
-    ctx.fillRect(0, GROUND_Y, VIRTUAL_WIDTH, 2);
-}
-
-function draw() {
-    drawBackground();
-    if(state.active) {
-        drawMagicSensor(ctx, player, obstacles);
-    }
-    obstacles.forEach(o => o.draw(ctx));
-    
-    if(state.active || player) player.draw(ctx);
-    particles.forEach(p => p.draw(ctx));
 }
 
 function gameLoop() {
     update();
-    draw();
-    if(state.active) {
+
+    drawBackground();
+    drawBoard();
+    if (gameActive && gPhase !== 'gameover') {
+        drawFallingPiece();
+    }
+    drawNextPanel();
+    drawHUD();
+    drawGothLoli();
+
+    if (gameActive) {
         animId = requestAnimationFrame(gameLoop);
     }
 }
 
-// 4. キャンバス操作（ボタン操作と完全に分離）
-function handleInput(e) {
-    e.preventDefault(); // キャンバスでのスクロール防止
-    if (state.active) player.jump();
-}
-// キャンバス自体をタッチした時だけジャンプ（UIボタンを邪魔しない）
-canvas.addEventListener('mousedown', handleInput);
-canvas.addEventListener('touchstart', handleInput, {passive: false});
-
-// 初期描画
+// =====================================================
+// 10. 初期描画
+// =====================================================
 handleOrientation();
-player = new GothLoli(); // スタート画面用の初期描画
+// スタート画面にも盤面を表示
+grid = Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
+nextPair = [1, 2];
+piece = null;
+score = 0; maxChain = 0; chain = 0; level = 1;
+gPhase = 'gameover'; gTimer = 0; gFrames = 0;
+clearCells = []; gameActive = false;
 drawBackground();
-player.draw(ctx);
+drawBoard();
+drawNextPanel();
+drawHUD();
+drawGothLoli();
 
 </script>
 </body>
