@@ -258,7 +258,7 @@ function applyGravity() {
 
 function calcScore(numCleared, chainNum) {
     const chainBonus = [0, 0, 8, 16, 32, 64, 96, 128, 160];
-    const idx = Math.min(chainNum, 8);
+    const idx = Math.min(chainNum, chainBonus.length - 1);
     return numCleared * 10 * (1 + chainBonus[idx]);
 }
 
@@ -290,7 +290,7 @@ function update() {
         // 横移動 (DAS/ARR)
         if (leftH || rightH) {
             dasT++;
-            if (dasT === 1 || (dasT >= DAS_DELAY && (dasT - DAS_DELAY) % ARR_RATE === 0)) {
+            if (dasT >= DAS_DELAY && (dasT - DAS_DELAY) % ARR_RATE === 0) {
                 if (leftH && !rightH) tryMoveH(-1);
                 if (rightH && !leftH) tryMoveH(1);
             }
@@ -654,8 +654,8 @@ inputQ = [];
 window.addEventListener('keydown', e => {
     if (!gameActive) return;
     switch (e.key) {
-        case 'ArrowLeft':  if (!leftH)  { leftH  = true; dasT = 1; tryMoveH(-1); } break;
-        case 'ArrowRight': if (!rightH) { rightH = true; dasT = 1; tryMoveH(1); }  break;
+        case 'ArrowLeft':  if (!leftH)  { leftH  = true; dasT = 0; tryMoveH(-1); } break;
+        case 'ArrowRight': if (!rightH) { rightH = true; dasT = 0; tryMoveH(1); }  break;
         case 'ArrowDown':  softDrop = true; break;
         case 'ArrowUp': case 'x': case 'X': inputQ.push('rcw');  break;
         case 'z': case 'Z':                 inputQ.push('rccw'); break;
